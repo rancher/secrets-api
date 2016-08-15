@@ -18,7 +18,10 @@ func NewRouter() *mux.Router {
 
 	router := mux.NewRouter().StrictSlash(true)
 
+	router.Methods("GET").Path("/").Handler(api.VersionHandler(schemas, "v1"))
 	router.Methods("GET").Path("/v1/schemas").Handler(api.SchemasHandler(schemas))
+	router.Methods("GET").Path("/v1/schemas/{id}").Handler(api.SchemaHandler(schemas))
+	router.Methods("GET").Path("/v1").Handler(api.VersionHandler(schemas, "v1"))
 
 	return router
 }
