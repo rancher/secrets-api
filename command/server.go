@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/rancher/secrets-api/service"
 	"github.com/urfave/cli"
 )
 
@@ -12,6 +13,6 @@ func ServerCommand() cli.Command {
 	}
 }
 
-func startServer(c *cli.Command) error {
-	return nil
+func startServer(c *cli.Context) error {
+	return service.StartServer()
 }
