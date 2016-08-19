@@ -1,4 +1,8 @@
-image: rancher/dind:v1.10.0-rancher1
-script:
- - wrapdocker
- - make ci
+---
+pipeline:
+    build:
+        image: rancher/dind:v1.10.0-rancher1
+        privileged: true
+        commands:
+            - wrapdocker
+            - make ci
