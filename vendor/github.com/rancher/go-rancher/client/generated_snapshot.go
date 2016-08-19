@@ -17,6 +17,8 @@ type Snapshot struct {
 
 	Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
 
+	ManagedVolumeUUID string `json:"managedVolumeUUID,omitempty" yaml:"managed_volume_uuid,omitempty"`
+
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 
 	RemoveTime string `json:"removeTime,omitempty" yaml:"remove_time,omitempty"`
@@ -52,7 +54,7 @@ type SnapshotOperations interface {
 	ById(id string) (*Snapshot, error)
 	Delete(container *Snapshot) error
 
-	ActionBackup(*Snapshot, *SnapshotBackupInput) (*Backup, error)
+	ActionBackup(*Snapshot) (*Snapshot, error)
 
 	ActionCreate(*Snapshot) (*Snapshot, error)
 
@@ -98,11 +100,11 @@ func (c *SnapshotClient) Delete(container *Snapshot) error {
 	return c.rancherClient.doResourceDelete(SNAPSHOT_TYPE, &container.Resource)
 }
 
-func (c *SnapshotClient) ActionBackup(resource *Snapshot, input *SnapshotBackupInput) (*Backup, error) {
+func (c *SnapshotClient) ActionBackup(resource *Snapshot) (*Snapshot, error) {
 
-	resp := &Backup{}
+	resp := &Snapshot{}
 
-	err := c.rancherClient.doAction(SNAPSHOT_TYPE, "backup", &resource.Resource, input, resp)
+	err := c.rancherClient.doAction(SNAPSHOT_TYPE, "backup", &resource.Resource, nil, resp)
 
 	return resp, err
 }

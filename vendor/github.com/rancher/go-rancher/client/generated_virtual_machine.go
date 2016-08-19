@@ -13,8 +13,6 @@ type VirtualMachine struct {
 
 	AllocationState string `json:"allocationState,omitempty" yaml:"allocation_state,omitempty"`
 
-	BlkioDeviceOptions map[string]interface{} `json:"blkioDeviceOptions,omitempty" yaml:"blkio_device_options,omitempty"`
-
 	Command []string `json:"command,omitempty" yaml:"command,omitempty"`
 
 	Count int64 `json:"count,omitempty" yaml:"count,omitempty"`
@@ -52,8 +50,6 @@ type VirtualMachine struct {
 	HealthCheck *InstanceHealthCheck `json:"healthCheck,omitempty" yaml:"health_check,omitempty"`
 
 	HealthState string `json:"healthState,omitempty" yaml:"health_state,omitempty"`
-
-	HostId string `json:"hostId,omitempty" yaml:"host_id,omitempty"`
 
 	Hostname string `json:"hostname,omitempty" yaml:"hostname,omitempty"`
 
@@ -148,15 +144,11 @@ type VirtualMachineOperations interface {
 
 	ActionDeallocate(*VirtualMachine) (*Instance, error)
 
-	ActionError(*VirtualMachine) (*Instance, error)
-
 	ActionExecute(*VirtualMachine, *ContainerExec) (*HostAccess, error)
 
 	ActionLogs(*VirtualMachine, *ContainerLogs) (*HostAccess, error)
 
 	ActionMigrate(*VirtualMachine) (*Instance, error)
-
-	ActionProxy(*VirtualMachine, *ContainerProxy) (*HostAccess, error)
 
 	ActionPurge(*VirtualMachine) (*Instance, error)
 
@@ -256,15 +248,6 @@ func (c *VirtualMachineClient) ActionDeallocate(resource *VirtualMachine) (*Inst
 	return resp, err
 }
 
-func (c *VirtualMachineClient) ActionError(resource *VirtualMachine) (*Instance, error) {
-
-	resp := &Instance{}
-
-	err := c.rancherClient.doAction(VIRTUAL_MACHINE_TYPE, "error", &resource.Resource, nil, resp)
-
-	return resp, err
-}
-
 func (c *VirtualMachineClient) ActionExecute(resource *VirtualMachine, input *ContainerExec) (*HostAccess, error) {
 
 	resp := &HostAccess{}
@@ -288,15 +271,6 @@ func (c *VirtualMachineClient) ActionMigrate(resource *VirtualMachine) (*Instanc
 	resp := &Instance{}
 
 	err := c.rancherClient.doAction(VIRTUAL_MACHINE_TYPE, "migrate", &resource.Resource, nil, resp)
-
-	return resp, err
-}
-
-func (c *VirtualMachineClient) ActionProxy(resource *VirtualMachine, input *ContainerProxy) (*HostAccess, error) {
-
-	resp := &HostAccess{}
-
-	err := c.rancherClient.doAction(VIRTUAL_MACHINE_TYPE, "proxy", &resource.Resource, input, resp)
 
 	return resp, err
 }

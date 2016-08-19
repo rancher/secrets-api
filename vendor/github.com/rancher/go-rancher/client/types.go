@@ -17,11 +17,6 @@ type GenericCollection struct {
 	Data []interface{} `json:"data,omitempty"`
 }
 
-type ResourceCollection struct {
-	Collection
-	Data []Resource `json:"data,omitempty"`
-}
-
 type Sort struct {
 	Name    string `json:"name,omitempty"`
 	Order   string `json:"order,omitempty"`
@@ -78,7 +73,6 @@ type Field struct {
 	Options      []string    `json:"options,omitempty"`
 	ValidChars   string      `json:"validChars,omitempty"`
 	InvalidChars string      `json:"invalidChars,omitempty"`
-	Description  string      `json:"description,omitempty"`
 }
 
 type Action struct {
@@ -92,4 +86,12 @@ type Filter struct {
 
 type ListOpts struct {
 	Filters map[string]interface{}
+}
+
+type ServerApiError struct {
+	Resource
+	Status  int    `json:"status"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Detail  string `json:"detail"`
 }

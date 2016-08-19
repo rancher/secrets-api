@@ -13,8 +13,6 @@ type Container struct {
 
 	AllocationState string `json:"allocationState,omitempty" yaml:"allocation_state,omitempty"`
 
-	BlkioDeviceOptions map[string]interface{} `json:"blkioDeviceOptions,omitempty" yaml:"blkio_device_options,omitempty"`
-
 	Build *DockerBuild `json:"build,omitempty" yaml:"build,omitempty"`
 
 	CapAdd []string `json:"capAdd,omitempty" yaml:"cap_add,omitempty"`
@@ -68,8 +66,6 @@ type Container struct {
 	HealthCheck *InstanceHealthCheck `json:"healthCheck,omitempty" yaml:"health_check,omitempty"`
 
 	HealthState string `json:"healthState,omitempty" yaml:"health_state,omitempty"`
-
-	HostId string `json:"hostId,omitempty" yaml:"host_id,omitempty"`
 
 	Hostname string `json:"hostname,omitempty" yaml:"hostname,omitempty"`
 
@@ -178,15 +174,11 @@ type ContainerOperations interface {
 
 	ActionDeallocate(*Container) (*Instance, error)
 
-	ActionError(*Container) (*Instance, error)
-
 	ActionExecute(*Container, *ContainerExec) (*HostAccess, error)
 
 	ActionLogs(*Container, *ContainerLogs) (*HostAccess, error)
 
 	ActionMigrate(*Container) (*Instance, error)
-
-	ActionProxy(*Container, *ContainerProxy) (*HostAccess, error)
 
 	ActionPurge(*Container) (*Instance, error)
 
@@ -286,15 +278,6 @@ func (c *ContainerClient) ActionDeallocate(resource *Container) (*Instance, erro
 	return resp, err
 }
 
-func (c *ContainerClient) ActionError(resource *Container) (*Instance, error) {
-
-	resp := &Instance{}
-
-	err := c.rancherClient.doAction(CONTAINER_TYPE, "error", &resource.Resource, nil, resp)
-
-	return resp, err
-}
-
 func (c *ContainerClient) ActionExecute(resource *Container, input *ContainerExec) (*HostAccess, error) {
 
 	resp := &HostAccess{}
@@ -318,15 +301,6 @@ func (c *ContainerClient) ActionMigrate(resource *Container) (*Instance, error) 
 	resp := &Instance{}
 
 	err := c.rancherClient.doAction(CONTAINER_TYPE, "migrate", &resource.Resource, nil, resp)
-
-	return resp, err
-}
-
-func (c *ContainerClient) ActionProxy(resource *Container, input *ContainerProxy) (*HostAccess, error) {
-
-	resp := &HostAccess{}
-
-	err := c.rancherClient.doAction(CONTAINER_TYPE, "proxy", &resource.Resource, input, resp)
 
 	return resp, err
 }

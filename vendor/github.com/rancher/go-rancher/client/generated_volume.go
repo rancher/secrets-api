@@ -7,8 +7,6 @@ const (
 type Volume struct {
 	Resource
 
-	AccessMode string `json:"accessMode,omitempty" yaml:"access_mode,omitempty"`
-
 	AccountId string `json:"accountId,omitempty" yaml:"account_id,omitempty"`
 
 	Created string `json:"created,omitempty" yaml:"created,omitempty"`
@@ -72,6 +70,8 @@ type VolumeOperations interface {
 
 	ActionCreate(*Volume) (*Volume, error)
 
+	ActionDeactivate(*Volume) (*Volume, error)
+
 	ActionDeallocate(*Volume) (*Volume, error)
 
 	ActionPurge(*Volume) (*Volume, error)
@@ -79,12 +79,6 @@ type VolumeOperations interface {
 	ActionRemove(*Volume) (*Volume, error)
 
 	ActionRestore(*Volume) (*Volume, error)
-
-	ActionRestorefrombackup(*Volume, *RestoreFromBackupInput) (*Volume, error)
-
-	ActionReverttosnapshot(*Volume, *RevertToSnapshotInput) (*Volume, error)
-
-	ActionSnapshot(*Volume, *VolumeSnapshotInput) (*Snapshot, error)
 
 	ActionUpdate(*Volume) (*Volume, error)
 }
@@ -155,6 +149,15 @@ func (c *VolumeClient) ActionCreate(resource *Volume) (*Volume, error) {
 	return resp, err
 }
 
+func (c *VolumeClient) ActionDeactivate(resource *Volume) (*Volume, error) {
+
+	resp := &Volume{}
+
+	err := c.rancherClient.doAction(VOLUME_TYPE, "deactivate", &resource.Resource, nil, resp)
+
+	return resp, err
+}
+
 func (c *VolumeClient) ActionDeallocate(resource *Volume) (*Volume, error) {
 
 	resp := &Volume{}
@@ -187,33 +190,6 @@ func (c *VolumeClient) ActionRestore(resource *Volume) (*Volume, error) {
 	resp := &Volume{}
 
 	err := c.rancherClient.doAction(VOLUME_TYPE, "restore", &resource.Resource, nil, resp)
-
-	return resp, err
-}
-
-func (c *VolumeClient) ActionRestorefrombackup(resource *Volume, input *RestoreFromBackupInput) (*Volume, error) {
-
-	resp := &Volume{}
-
-	err := c.rancherClient.doAction(VOLUME_TYPE, "restorefrombackup", &resource.Resource, input, resp)
-
-	return resp, err
-}
-
-func (c *VolumeClient) ActionReverttosnapshot(resource *Volume, input *RevertToSnapshotInput) (*Volume, error) {
-
-	resp := &Volume{}
-
-	err := c.rancherClient.doAction(VOLUME_TYPE, "reverttosnapshot", &resource.Resource, input, resp)
-
-	return resp, err
-}
-
-func (c *VolumeClient) ActionSnapshot(resource *Volume, input *VolumeSnapshotInput) (*Snapshot, error) {
-
-	resp := &Snapshot{}
-
-	err := c.rancherClient.doAction(VOLUME_TYPE, "snapshot", &resource.Resource, input, resp)
 
 	return resp, err
 }

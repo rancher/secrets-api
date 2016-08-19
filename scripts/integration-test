@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -x 
+
+cd $(dirname $0)/..
+
+./bin/secrets-api -d server &
+
+cd integration
+python --version
+
+find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;
+if [ -z "$NO_TEST" ]; then
+    tox "$@"
+fi

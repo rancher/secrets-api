@@ -13,8 +13,6 @@ type SecondaryLaunchConfig struct {
 
 	AllocationState string `json:"allocationState,omitempty" yaml:"allocation_state,omitempty"`
 
-	BlkioDeviceOptions map[string]interface{} `json:"blkioDeviceOptions,omitempty" yaml:"blkio_device_options,omitempty"`
-
 	Build *DockerBuild `json:"build,omitempty" yaml:"build,omitempty"`
 
 	CapAdd []string `json:"capAdd,omitempty" yaml:"cap_add,omitempty"`
@@ -73,8 +71,6 @@ type SecondaryLaunchConfig struct {
 
 	HealthState string `json:"healthState,omitempty" yaml:"health_state,omitempty"`
 
-	HostId string `json:"hostId,omitempty" yaml:"host_id,omitempty"`
-
 	Hostname string `json:"hostname,omitempty" yaml:"hostname,omitempty"`
 
 	ImageUuid string `json:"imageUuid,omitempty" yaml:"image_uuid,omitempty"`
@@ -126,8 +122,6 @@ type SecondaryLaunchConfig struct {
 	Removed string `json:"removed,omitempty" yaml:"removed,omitempty"`
 
 	RequestedHostId string `json:"requestedHostId,omitempty" yaml:"requested_host_id,omitempty"`
-
-	RequestedIpAddress string `json:"requestedIpAddress,omitempty" yaml:"requested_ip_address,omitempty"`
 
 	SecurityOpt []string `json:"securityOpt,omitempty" yaml:"security_opt,omitempty"`
 
@@ -190,13 +184,11 @@ type SecondaryLaunchConfigOperations interface {
 
 	ActionDeallocate(*SecondaryLaunchConfig) (*Instance, error)
 
-	ActionError(*SecondaryLaunchConfig) (*Instance, error)
-
 	ActionExecute(*SecondaryLaunchConfig, *ContainerExec) (*HostAccess, error)
 
-	ActionMigrate(*SecondaryLaunchConfig) (*Instance, error)
+	ActionLogs(*SecondaryLaunchConfig, *ContainerLogs) (*HostAccess, error)
 
-	ActionProxy(*SecondaryLaunchConfig, *ContainerProxy) (*HostAccess, error)
+	ActionMigrate(*SecondaryLaunchConfig) (*Instance, error)
 
 	ActionPurge(*SecondaryLaunchConfig) (*Instance, error)
 
@@ -296,15 +288,6 @@ func (c *SecondaryLaunchConfigClient) ActionDeallocate(resource *SecondaryLaunch
 	return resp, err
 }
 
-func (c *SecondaryLaunchConfigClient) ActionError(resource *SecondaryLaunchConfig) (*Instance, error) {
-
-	resp := &Instance{}
-
-	err := c.rancherClient.doAction(SECONDARY_LAUNCH_CONFIG_TYPE, "error", &resource.Resource, nil, resp)
-
-	return resp, err
-}
-
 func (c *SecondaryLaunchConfigClient) ActionExecute(resource *SecondaryLaunchConfig, input *ContainerExec) (*HostAccess, error) {
 
 	resp := &HostAccess{}
@@ -314,20 +297,20 @@ func (c *SecondaryLaunchConfigClient) ActionExecute(resource *SecondaryLaunchCon
 	return resp, err
 }
 
+func (c *SecondaryLaunchConfigClient) ActionLogs(resource *SecondaryLaunchConfig, input *ContainerLogs) (*HostAccess, error) {
+
+	resp := &HostAccess{}
+
+	err := c.rancherClient.doAction(SECONDARY_LAUNCH_CONFIG_TYPE, "logs", &resource.Resource, input, resp)
+
+	return resp, err
+}
+
 func (c *SecondaryLaunchConfigClient) ActionMigrate(resource *SecondaryLaunchConfig) (*Instance, error) {
 
 	resp := &Instance{}
 
 	err := c.rancherClient.doAction(SECONDARY_LAUNCH_CONFIG_TYPE, "migrate", &resource.Resource, nil, resp)
-
-	return resp, err
-}
-
-func (c *SecondaryLaunchConfigClient) ActionProxy(resource *SecondaryLaunchConfig, input *ContainerProxy) (*HostAccess, error) {
-
-	resp := &HostAccess{}
-
-	err := c.rancherClient.doAction(SECONDARY_LAUNCH_CONFIG_TYPE, "proxy", &resource.Resource, input, resp)
 
 	return resp, err
 }
