@@ -84,7 +84,6 @@ def test_secrets_rewrap_api_none_backend():
     json_secret["rewrapKey"] = insecure_public_key
 
     json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
-    print("{}\n".format(json_rewrapped_secret))
 
     assert "" == json_rewrapped_secret["clearText"]
     assert "" == json_rewrapped_secret["cipherText"]
