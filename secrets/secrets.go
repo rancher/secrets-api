@@ -1,6 +1,8 @@
 package secrets
 
 import (
+	"encoding/base64"
+
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
 	"github.com/rancher/secrets-api/backends"
@@ -36,17 +38,34 @@ func (s *Secret) Encrypt() error {
 }
 
 func (s *Secret) Rewrap() error {
-	backend, err := backends.New(s.Backend)
+	var err error
+	encData, err := s.wrapPlainText()
 	if err != nil {
 		return err
 	}
-
-	s.ClearText, err = backend.GetClearText(s.KeyName, s.CipherText)
-	if err != nil {
-		return err
-	}
-
+	s.RewrapText = base64.StdEncoding.EncodeToString([]byte(encData.EncryptedText))
+	s.HashAlgorithm = encData.Algorithm
 	s.CipherText = ""
+	s.ClearText = ""
 
 	return nil
+}
+
+func (s *Secret) wrapPlainText() (*encryptedData, error) {
+	pubKey, err := newPublicKey(s.RewrapKey)
+	if err != nil {
+		return nil, err
+	}
+
+	backend, err := backends.New(s.Backend)
+	if err != nil {
+		return nil, err
+	}
+
+	clearText, err := backend.GetClearText(s.KeyName, s.CipherText)
+	if err != nil {
+		return nil, err
+	}
+
+	return pubKey.encrypt(clearText)
 }
