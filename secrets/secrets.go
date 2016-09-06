@@ -1,8 +1,6 @@
 package secrets
 
 import (
-	"encoding/base64"
-
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
 	"github.com/rancher/secrets-api/backends"
@@ -43,8 +41,11 @@ func (s *Secret) Rewrap() error {
 	if err != nil {
 		return err
 	}
-	s.RewrapText = base64.StdEncoding.EncodeToString([]byte(encData.EncryptedText))
-	s.HashAlgorithm = encData.Algorithm
+
+	s.RewrapText = encData.EncryptedText
+	s.HashAlgorithm = encData.HashAlgorithm
+	s.EncryptionAlgorithm = encData.EncryptionAlgorithm
+
 	s.CipherText = ""
 	s.ClearText = ""
 

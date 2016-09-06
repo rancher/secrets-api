@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"errors"
 
@@ -19,9 +20,11 @@ func newPublicKey(pKey string) (*rsaPublicKey, error) {
 func (pk *rsaPublicKey) encrypt(text string) (*encryptedData, error) {
 	rng := rand.Reader
 	cipherText, err := rsa.EncryptOAEP(sha256.New(), rng, pk.PublicKey, []byte(text), []byte(""))
+
 	return &encryptedData{
-		EncryptedText: string(cipherText),
-		Algorithm:     "sha256",
+		EncryptionAlgorithm: "RSA-PKCS1-OAEP",
+		EncryptedText:       base64.StdEncoding.EncodeToString(cipherText),
+		HashAlgorithm:       "sha256",
 	}, err
 }
 
