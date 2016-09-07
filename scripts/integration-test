@@ -4,7 +4,9 @@ set -x
 
 cd $(dirname $0)/..
 
-./bin/secrets-api -d server &
+echo "B374A26A71490437AA024E4FADD5B49" > /etc/ssl/private/test_key
+
+./bin/secrets-api -d server --enc-key-path /etc/ssl/private/test_key &
 
 cd integration
 python --version

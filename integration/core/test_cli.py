@@ -71,6 +71,13 @@ def python_post_response(url, json):
     return secret.json()
 
 
+def verify_plain_text_from_enc(data):
+    plain_text = get_decrypted_value(insecure_private_key,
+                                     base64.b64decode(data))
+
+    assert secret_data["clearText"] == plain_text
+
+
 def test_secrets_create_api_none_backend():
     json_secret = python_post_response(CREATE_URL, secret_data)
     expected_encoded = base64.b64encode(secret_data["clearText"])
@@ -81,16 +88,24 @@ def test_secrets_create_api_none_backend():
 
 def test_secrets_rewrap_api_none_backend():
     json_secret = python_post_response(CREATE_URL, secret_data)
-    json_secret["rewrapKey"] = insecure_public_key
 
+    json_secret["rewrapKey"] = insecure_public_key
     json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
 
     assert "" == json_rewrapped_secret["clearText"]
     assert "" == json_rewrapped_secret["cipherText"]
 
-    print(base64.b64decode(json_rewrapped_secret["rewrapText"]) + '\n')
-    plain_text = get_decrypted_value(insecure_private_key,
-                                     base64.b64decode(
-                                         json_rewrapped_secret["rewrapText"]))
+    verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
 
-    assert secret_data["clearText"] == plain_text
+
+def test_secrets_rewrap_api_local_key_backend():
+    secret_data["backend"] = "localkey"
+    json_secret = python_post_response(CREATE_URL, secret_data)
+
+    json_secret["rewrapKey"] = insecure_public_key
+    json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
+
+    assert "" == json_rewrapped_secret["clearText"]
+    assert "" == json_rewrapped_secret["cipherText"]
+
+    verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
