@@ -42,6 +42,10 @@ func CreateSecret(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func BulkCreateSecret(w http.ResponseWriter, r *http.Request) error {
+	return nil
+}
+
 func RewrapSecret(w http.ResponseWriter, r *http.Request) error {
 	apiContext := api.GetApiContext(r)
 
@@ -62,6 +66,10 @@ func RewrapSecret(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	apiContext.Write(&sec)
+	return nil
+}
+
+func BulkRewrapSecret(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 

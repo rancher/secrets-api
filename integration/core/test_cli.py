@@ -10,6 +10,7 @@ CREATE_URL = URL + "/v1-secrets/secrets/create"
 REWRAP_URL = URL + "/v1-secrets/secrets/rewrap"
 
 secret_data = {
+        "name": "secret1",
         "clearText": "hello",
         "backend": "none"
         }

@@ -36,9 +36,17 @@ func NewRouter() *mux.Router {
 			Input:  "secret",
 			Output: "secret",
 		},
+		"rewrap?action=bulk": {
+			Input:  "array[secret]",
+			Output: "array[secret]",
+		},
 		"create": {
 			Input:  "secret",
 			Output: "secret",
+		},
+		"create?action=bulk": {
+			Input:  "array[secret]",
+			Output: "array[secret]",
 		},
 	}
 
@@ -56,7 +64,9 @@ func NewRouter() *mux.Router {
 	//Application Routes
 
 	router.Methods("POST").Path("/v1-secrets/secrets/create").Handler(f(schemas, CreateSecret))
+	router.Methods("POST").Path("/v1-secrets/secrets/create").Queries("action", "bulk").Handler(f(schemas, BulkCreateSecret))
 	router.Methods("POST").Path("/v1-secrets/secrets/rewrap").Handler(f(schemas, RewrapSecret))
+	router.Methods("POST").Path("/v1-secrets/secrets/rewrap").Queries("action", "bulk").Handler(f(schemas, BulkRewrapSecret))
 
 	return router
 }

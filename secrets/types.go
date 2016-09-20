@@ -8,6 +8,7 @@ import (
 
 type Secret struct {
 	client.Resource
+	SecretName          string `json:"name"`
 	Backend             string `json:"backend"`
 	KeyName             string `json:"keyName"`
 	CipherText          string `json:"cipherText"`
