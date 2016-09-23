@@ -5,6 +5,7 @@ import (
 
 	"github.com/rancher/secrets-api/backends/localkey"
 	"github.com/rancher/secrets-api/backends/none"
+	"github.com/rancher/secrets-api/backends/vault"
 )
 
 var runtimeConfigs *Configs
@@ -19,10 +20,15 @@ func New(name string) (EncryptorClient, error) {
 	case "none":
 		return &none.Client{}, nil
 	case "localkey":
-		if runtimeConfigs != nil {
+		if runtimeConfigs.EncryptionKeyPath != "" {
 			return localkey.NewLocalKeyAndInitBlock(runtimeConfigs.EncryptionKeyPath)
 		}
 		return nil, errors.New("No backend configured")
+	case "vault":
+		if runtimeConfigs.VaultURL != "" && runtimeConfigs.VaultToken != "" {
+			return vault.NewClient(runtimeConfigs.VaultURL, runtimeConfigs.VaultToken)
+		}
+		return nil, errors.New("Backend not configured")
 	default:
 		return nil, errors.New("Unknown Encryption backend")
 	}

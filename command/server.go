@@ -14,8 +14,18 @@ func ServerCommand() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:   "enc-key-path",
-				Usage:  "Encryption key to use for localkey encryption",
+				Usage:  "Encryption key file to use for localkey encryption",
 				EnvVar: "ENC_KEY_PATH",
+			},
+			cli.StringFlag{
+				Name:   "vault-url",
+				Usage:  "URL For Vault server with Transit backend enabled",
+				EnvVar: "VAULT_ADDR",
+			},
+			cli.StringFlag{
+				Name:   "vault-token",
+				Usage:  "URL For Vault server with Transit backend enabled",
+				EnvVar: "VAULT_TOKEN",
 			},
 		},
 	}
@@ -23,7 +33,11 @@ func ServerCommand() cli.Command {
 
 func startServer(c *cli.Context) error {
 	backendConfig := backends.NewConfig()
+
 	backendConfig.EncryptionKeyPath = c.String("enc-key-path")
+	backendConfig.VaultURL = c.String("vault-url")
+	backendConfig.VaultToken = c.String("vault-token")
+
 	backends.SetBackendConfigs(backendConfig)
 
 	return service.StartServer()
