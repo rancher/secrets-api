@@ -1,6 +1,8 @@
 package backends
 
 type Configs struct {
+	VaultToken        string
+	VaultURL          string
 	EncryptionKeyPath string
 }
 
