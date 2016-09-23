@@ -10,9 +10,34 @@ CREATE_URL = URL + "/v1-secrets/secrets/create"
 REWRAP_URL = URL + "/v1-secrets/secrets/rewrap"
 
 secret_data = {
+        "type": "secret",
+        "name": "secret1",
         "clearText": "hello",
         "backend": "none"
         }
+
+secrets_bulk_data = {
+        "data": [
+          {
+             "type": "secret",
+             "name": "secret1",
+             "clearText": "hello",
+             "backend": "none"
+          },
+          {
+             "type": "secret",
+             "name": "secret2",
+             "clearText": "world",
+             "backend": "none"
+          },
+          {
+             "type": "secret",
+             "name": "secret3",
+             "clearText": "!",
+             "backend": "none"
+          }
+        ]
+      }
 
 insecure_private_key = '''-----BEGIN RSA PRIVATE KEY-----
 MIIEogIBAAKCAQEAlqXgL8UtupeafCFVQwckREfGN+KM3M+tiY0CLsd847w3B3MI
@@ -67,15 +92,17 @@ def get_decrypted_value(p_key, val):
 
 def python_post_response(url, json):
     secret = requests.post(url, json=json)
+    print(secret.status_code)
+    print(secret.json())
     assert secret.status_code == requests.codes.ok
     return secret.json()
 
 
-def verify_plain_text_from_enc(data):
+def verify_plain_text_from_enc(data, expected_value=secret_data["clearText"]):
     plain_text = get_decrypted_value(insecure_private_key,
                                      base64.b64decode(data))
 
-    assert secret_data["clearText"] == plain_text
+    assert expected_value == plain_text
 
 
 def test_secrets_create_api_none_backend():
@@ -84,6 +111,19 @@ def test_secrets_create_api_none_backend():
 
     assert expected_encoded == json_secret["cipherText"]
     assert "" == json_secret["clearText"]
+
+
+def test_secrets_create_bulk_api_none_backend():
+    bulk_url = CREATE_URL + "?action=bulk"
+    json_secrets = python_post_response(bulk_url, secrets_bulk_data)
+
+    i = 0
+    for secret in json_secrets["data"]:
+        expected_encoded = base64.b64encode(
+                secrets_bulk_data["data"][i]["clearText"])
+        assert expected_encoded == secret["cipherText"]
+        assert "" == secret["clearText"]
+        i += 1
 
 
 def test_secrets_rewrap_api_none_backend():
@@ -109,3 +149,25 @@ def test_secrets_rewrap_api_local_key_backend():
     assert "" == json_rewrapped_secret["cipherText"]
 
     verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
+
+
+def test_secrets_rewrap_bulk_api_none_backend():
+    bulk_url = CREATE_URL+"?action=bulk"
+    json_secret = python_post_response(bulk_url, secrets_bulk_data)
+
+    json_secret["rewrapKey"] = insecure_public_key
+
+    print(json_secret)
+
+    bulk_rewrap_url = REWRAP_URL + "?action=bulk"
+    json_rewrapped_secrets = python_post_response(bulk_rewrap_url, json_secret)
+
+    i = 0
+    for secret in json_rewrapped_secrets["data"]:
+        assert "" == secret["clearText"]
+        assert "" == secret["cipherText"]
+
+        verify_plain_text_from_enc(
+                secret["rewrapText"],
+                secrets_bulk_data["data"][i]["clearText"])
+        i += 1

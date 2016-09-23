@@ -35,10 +35,32 @@ func CreateSecret(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		logrus.Errorf("Could not encrypt secret")
 		logrus.Error(err)
+		return err
 	}
 
 	apiContext.Write(&sec)
 
+	return nil
+}
+
+func BulkCreateSecret(w http.ResponseWriter, r *http.Request) error {
+	apiContext := api.GetApiContext(r)
+	bulkSecret := secrets.NewBulkSecret()
+
+	jsonDecoder := json.NewDecoder(r.Body)
+
+	err := jsonDecoder.Decode(&bulkSecret)
+	if err != nil {
+		return err
+	}
+
+	err = bulkSecret.Encrypt()
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
+
+	apiContext.Write(bulkSecret)
 	return nil
 }
 
@@ -62,6 +84,28 @@ func RewrapSecret(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	apiContext.Write(&sec)
+	return nil
+}
+
+func BulkRewrapSecret(w http.ResponseWriter, r *http.Request) error {
+	apiContext := api.GetApiContext(r)
+	bulkSecret := secrets.NewBulkSecret()
+
+	jsonDecoder := json.NewDecoder(r.Body)
+
+	err := jsonDecoder.Decode(&bulkSecret)
+	if err != nil {
+		logrus.Errorf("Could not decode: %s because %s", r.Body, err)
+		return err
+	}
+
+	err = bulkSecret.Rewrap()
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
+
+	apiContext.Write(&bulkSecret)
 	return nil
 }
 

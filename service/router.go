@@ -28,6 +28,7 @@ func NewRouter() *mux.Router {
 	apiVersion.CollectionMethods = []string{}
 
 	schemas.AddType("schema", client.Schema{})
+	schemas.AddType("bulkSecret", secrets.BulkSecret{})
 
 	secret := schemas.AddType("secret", secrets.Secret{})
 	secret.CollectionMethods = []string{}
@@ -36,9 +37,17 @@ func NewRouter() *mux.Router {
 			Input:  "secret",
 			Output: "secret",
 		},
+		"rewrap?action=bulk": {
+			Input:  "bulkSecret",
+			Output: "bulkSecret",
+		},
 		"create": {
 			Input:  "secret",
 			Output: "secret",
+		},
+		"create?action=bulk": {
+			Input:  "bulkSecret",
+			Output: "bulkSecret",
 		},
 	}
 
@@ -53,9 +62,10 @@ func NewRouter() *mux.Router {
 	err := schemas.AddType("error", errObj{})
 	err.CollectionMethods = []string{}
 
-	//Application Routes
-
+	//Application Routes -- Order matters here
+	router.Methods("POST").Path("/v1-secrets/secrets/create").Queries("action", "bulk").Handler(f(schemas, BulkCreateSecret))
 	router.Methods("POST").Path("/v1-secrets/secrets/create").Handler(f(schemas, CreateSecret))
+	router.Methods("POST").Path("/v1-secrets/secrets/rewrap").Queries("action", "bulk").Handler(f(schemas, BulkRewrapSecret))
 	router.Methods("POST").Path("/v1-secrets/secrets/rewrap").Handler(f(schemas, RewrapSecret))
 
 	return router
