@@ -6,6 +6,11 @@ import (
 	"github.com/rancher/go-rancher/client"
 )
 
+type SecretCollection struct {
+	client.Collection
+	Data []Secret `json:"data,omitempty"`
+}
+
 type BulkSecret struct {
 	client.Resource
 	Data      []Secret `json:"data,omitempty"`

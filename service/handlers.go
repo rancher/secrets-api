@@ -12,13 +12,33 @@ import (
 )
 
 type errObj struct {
-	Resource client.Resource
-	Status   string
-	Message  string
+	client.Resource
+	Status  string `json:"status,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
+// ListSecrets to make schemas work better
+func ListSecrets(w http.ResponseWriter, r *http.Request) (int, error) {
+	apiContext := api.GetApiContext(r)
+	secretCollection := &secrets.SecretCollection{
+		Collection: client.Collection{
+			ResourceType: "secret",
+		},
+	}
+	secretCollection.Actions = map[string]string{
+		"create":             apiContext.UrlBuilder.Collection("secret") + "/create",
+		"rewrap":             apiContext.UrlBuilder.Collection("secret") + "/rewrap",
+		"rewrap?action=bulk": apiContext.UrlBuilder.Collection("secret") + "/rewrap?action=bulk",
+		"create?action=bulk": apiContext.UrlBuilder.Collection("secret") + "/create?action=bulk",
+	}
+
+	apiContext.Write(secretCollection)
+
+	return http.StatusOK, nil
 }
 
 // CreateSecret POST handler for route /secrets to create a new secret
-func CreateSecret(w http.ResponseWriter, r *http.Request) error {
+func CreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
 
 	sec := secrets.NewSecret(apiContext)
@@ -28,22 +48,22 @@ func CreateSecret(w http.ResponseWriter, r *http.Request) error {
 	err := jsonDecoder.Decode(&sec)
 	if err != nil {
 		logrus.Errorf("Could not decode: %s because %s", r.Body, err)
-		return err
+		return http.StatusBadRequest, err
 	}
 
 	err = sec.Encrypt()
 	if err != nil {
 		logrus.Errorf("Could not encrypt secret")
 		logrus.Error(err)
-		return err
+		return http.StatusBadRequest, err
 	}
 
 	apiContext.Write(&sec)
 
-	return nil
+	return http.StatusOK, nil
 }
 
-func BulkCreateSecret(w http.ResponseWriter, r *http.Request) error {
+func BulkCreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
 	bulkSecret := secrets.NewBulkSecret()
 
@@ -51,20 +71,20 @@ func BulkCreateSecret(w http.ResponseWriter, r *http.Request) error {
 
 	err := jsonDecoder.Decode(&bulkSecret)
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 
 	err = bulkSecret.Encrypt()
 	if err != nil {
 		logrus.Error(err)
-		return err
+		return http.StatusBadRequest, err
 	}
 
 	apiContext.Write(bulkSecret)
-	return nil
+	return http.StatusOK, nil
 }
 
-func RewrapSecret(w http.ResponseWriter, r *http.Request) error {
+func RewrapSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
 
 	sec := secrets.GetSecretResource()
@@ -74,20 +94,20 @@ func RewrapSecret(w http.ResponseWriter, r *http.Request) error {
 	err := jsonDecoder.Decode(&sec)
 	if err != nil {
 		logrus.Errorf("Could not decode: %s because %s", r.Body, err)
-		return err
+		return http.StatusBadRequest, err
 	}
 
 	err = sec.Rewrap()
 	if err != nil {
-		logrus.Errorf("Could not decrypt secret")
-		return err
+		logrus.Errorf("Could not rewrap secret")
+		return http.StatusBadRequest, err
 	}
 
 	apiContext.Write(&sec)
-	return nil
+	return http.StatusOK, nil
 }
 
-func BulkRewrapSecret(w http.ResponseWriter, r *http.Request) error {
+func BulkRewrapSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
 	bulkSecret := secrets.NewBulkSecret()
 
@@ -96,17 +116,17 @@ func BulkRewrapSecret(w http.ResponseWriter, r *http.Request) error {
 	err := jsonDecoder.Decode(&bulkSecret)
 	if err != nil {
 		logrus.Errorf("Could not decode: %s because %s", r.Body, err)
-		return err
+		return http.StatusBadRequest, err
 	}
 
 	err = bulkSecret.Rewrap()
 	if err != nil {
 		logrus.Error(err)
-		return err
+		return http.StatusBadRequest, err
 	}
 
 	apiContext.Write(&bulkSecret)
-	return nil
+	return http.StatusOK, nil
 }
 
 //URLEncoded encodes the urls so that spaces are allowed in resource names
