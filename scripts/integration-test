@@ -5,19 +5,20 @@ set -e
 cd $(dirname $0)/..
 
 echo "B374A26A71490437AA024E4FADD5B49" > /etc/ssl/private/test_key
+echo "A374A26A71490437AA024E4FADD5B49" > /etc/ssl/private/alt_test_key
 
 export VAULT_ROOT_TOKEN_ID="testing"
 
 export VAULT_TOKEN=${VAULT_ROOT_TOKEN_ID}
 export VAULT_ADDR=http://127.0.0.1:8200
 
-/usr/bin/vault server -dev -dev-root-token-id=$VAULT_ROOT_TOKEN_ID &
+/usr/bin/vault server -dev -dev-root-token-id=${VAULT_ROOT_TOKEN_ID} &
 /usr/bin/vault mount transit
 /usr/bin/vault mounts
 /usr/bin/vault write -f transit/keys/rancher
 /usr/bin/vault read transit/keys/rancher
 
-./bin/secrets-api -d server --enc-key-path /etc/ssl/private/test_key &
+./bin/secrets-api -d server --enc-key-path /etc/ssl/private &
 
 cd integration
 python --version

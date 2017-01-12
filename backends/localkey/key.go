@@ -1,16 +1,15 @@
 package localkey
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
+	"path"
 
 	"github.com/Sirupsen/logrus"
 )
 
 type encryptionKey interface {
 	Key(name string) ([]byte, error)
-	//Key() ([]byte, error)
 }
 
 type keyFile struct {
@@ -35,6 +34,7 @@ func testIsDir(keyPath string) (bool, error) {
 
 	file, err := os.Open(keyPath)
 	if err != nil {
+		logrus.Error(err)
 		return result, err
 	}
 	defer file.Close()
@@ -48,23 +48,10 @@ func testIsDir(keyPath string) (bool, error) {
 }
 
 func (kf *keyFile) Key(keyName string) ([]byte, error) {
-	if !kf.isDir {
-		key, err := kf.readPrivateKey()
-		if err != nil {
-			return []byte{}, err
-		}
-
-		return key, nil
-	}
-	return []byte{}, errors.New("No key found in directory")
-}
-
-func (kf *keyFile) readPrivateKey() ([]byte, error) {
-	keyData, err := ioutil.ReadFile(kf.pathName)
-	if err != nil {
-		return []byte{}, err
+	keyFile := keyName
+	if kf.isDir {
+		keyFile = path.Join(kf.pathName, keyName)
 	}
 
-	logrus.Debugf("Key: %s", string(keyData))
-	return keyData, nil
+	return ioutil.ReadFile(keyFile)
 }

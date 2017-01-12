@@ -8,27 +8,19 @@ import (
 	"errors"
 )
 
+// Client implements the backend client interface
 type Client struct {
 	encryptionKey encryptionKey
 	cipher        cipher.Block
 }
 
 type internalSecret struct {
-	KeyName    []byte
 	Nonce      []byte
 	Algorithm  string
 	CipherText []byte
 }
 
-func NewLocalKeyAndInitBlock(keyPath string) (*Client, error) {
-	client, err := NewLocalKey(keyPath)
-	if err != nil {
-		return client, err
-	}
-
-	return client, client.InitBlock(keyPath)
-}
-
+// NewLocalKey initializes a new local key
 func NewLocalKey(keyPath string) (*Client, error) {
 	if keyPath == "" {
 		return &Client{}, errors.New("No encryption key path configured")
@@ -45,6 +37,7 @@ func NewLocalKey(keyPath string) (*Client, error) {
 
 }
 
+// InitBlock initializes the block cipher
 func (l *Client) InitBlock(keyName string) error {
 	key, err := l.encryptionKey.Key(keyName)
 	if err != nil {
@@ -67,7 +60,11 @@ func (l *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 		Algorithm: "aes256-gcm",
 	}
 
-	l.InitBlock(keyName)
+	err := l.InitBlock(keyName)
+	if err != nil {
+		return "", err
+	}
+
 	if l.cipher == nil {
 		return "", errors.New("Cipher Block not initialized")
 	}
@@ -123,6 +120,16 @@ func (l *Client) GetClearText(keyName, secretBlob string) (string, error) {
 	}
 
 	return string(plainText), nil
+}
+
+// Sign implements the interface
+func (l *Client) Sign(keyName, clearText string) (string, error) {
+	return "", nil
+}
+
+// VerifySignature implements the interface.
+func (l *Client) VerifySignature(keyName, signature, message string) (bool, error) {
+	return true, nil
 }
 
 func randomNonce(byteLength int) ([]byte, error) {

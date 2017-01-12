@@ -167,6 +167,7 @@ def test_secrets_rewrap_api_vault_backend(single_secret):
 
 def test_secrets_rewrap_api_local_key_backend(single_secret):
     single_secret["backend"] = "localkey"
+    single_secret["keyName"] = "test_key"
     print(single_secret["clearText"])
     json_secret = python_post_response(CREATE_URL, single_secret)
 

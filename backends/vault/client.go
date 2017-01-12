@@ -22,7 +22,7 @@ func NewClient(url, token string) (*Client, error) {
 }
 
 // GetEncryptedText None Client just returns the clearText
-func (n *Client) GetEncryptedText(keyName, clearText string) (string, error) {
+func (v *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 	encryptPath := fmt.Sprintf("/transit/encrypt/%s", keyName)
 
 	preparedInput := prepareInput(clearText)
@@ -30,7 +30,7 @@ func (n *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 		"plaintext": preparedInput,
 	}
 
-	secret, err := n.writeToVault(encryptPath, data)
+	secret, err := v.writeToVault(encryptPath, data)
 	if err != nil {
 		logrus.Error(err)
 		return "", fmt.Errorf("Issue encrypting with %s key", keyName)
@@ -44,10 +44,10 @@ func (n *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 }
 
 // GetClearText  None Client just returns the cipherText
-func (n *Client) GetClearText(keyName, cipherText string) (string, error) {
+func (v *Client) GetClearText(keyName, cipherText string) (string, error) {
 	decryptPath := fmt.Sprintf("/transit/decrypt/%s", keyName)
 
-	secret, err := n.writeToVault(decryptPath, map[string]interface{}{"ciphertext": cipherText})
+	secret, err := v.writeToVault(decryptPath, map[string]interface{}{"ciphertext": cipherText})
 	if err != nil {
 		logrus.Error(err)
 		return "", fmt.Errorf("Issue decrypting secret with %s key", keyName)
@@ -64,8 +64,18 @@ func (n *Client) GetClearText(keyName, cipherText string) (string, error) {
 	return "", errors.New("Could not decrypt ciphertext")
 }
 
-func (n *Client) writeToVault(path string, data map[string]interface{}) (*api.Secret, error) {
-	vaultClient, err := n.getVaultClient()
+// Sign implements the interface
+func (v *Client) Sign(keyName, clearText string) (string, error) {
+	return "", nil
+}
+
+// VerifySignature verifies the signature
+func (v *Client) VerifySignature(keyName, signature, message string) (bool, error) {
+	return true, nil
+}
+
+func (v *Client) writeToVault(path string, data map[string]interface{}) (*api.Secret, error) {
+	vaultClient, err := v.getVaultClient()
 	if err != nil {
 		return nil, err
 	}
@@ -82,15 +92,15 @@ func prepareInput(text string) string {
 	return text
 }
 
-func (n *Client) getVaultClient() (*api.Client, error) {
+func (v *Client) getVaultClient() (*api.Client, error) {
 	config := api.DefaultConfig()
-	config.Address = n.url
+	config.Address = v.url
 
 	client, err := api.NewClient(config)
 	if err != nil {
 		return nil, err
 	}
-	client.SetToken(n.token)
+	client.SetToken(v.token)
 
 	return client, nil
 }
