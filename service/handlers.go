@@ -63,6 +63,7 @@ func CreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
+// BulkCreateSecret handles creating a list of multiple secrets and generating response
 func BulkCreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
 	bulkSecret := secrets.NewBulkSecret()
@@ -84,6 +85,7 @@ func BulkCreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
+// RewrapSecret rewraps a single secret witha  usersupplied public key
 func RewrapSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
 
@@ -107,6 +109,7 @@ func RewrapSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	return http.StatusOK, nil
 }
 
+// BulkRewrapSecret rewraps multiple secrets with a single given public key
 func BulkRewrapSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
 	bulkSecret := secrets.NewBulkSecret()
