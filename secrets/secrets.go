@@ -1,6 +1,8 @@
 package secrets
 
 import (
+	"errors"
+
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
 	"github.com/rancher/secrets-api/backends"
@@ -89,5 +91,9 @@ func (s *Secret) wrapPlainText() (*encryptedData, error) {
 		return nil, err
 	}
 
-	return pubKey.encrypt(clearText)
+	if match, err := backend.VerifySignature(s.KeyName, s.Signature, clearText); match && err == nil {
+		return pubKey.encrypt(clearText)
+	}
+
+	return nil, errors.New("Signatures did not match")
 }
