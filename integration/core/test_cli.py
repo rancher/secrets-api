@@ -1,6 +1,7 @@
 import requests
 import base64
 import pytest
+import hashlib
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA256
@@ -117,12 +118,20 @@ def verify_plain_text_from_enc(data, expected_value=secret_data["clearText"]):
     assert expected_value == plain_text
 
 
+def md5_hex_digest(data):
+    m = hashlib.md5()
+    m.update(data)
+    return m.hexdigest()
+
+
 def test_secrets_create_api_none_backend(single_secret):
     json_secret = python_post_response(CREATE_URL, single_secret)
     expected_encoded = base64.b64encode(single_secret["clearText"])
 
     assert expected_encoded == json_secret["cipherText"]
     assert "" == json_secret["clearText"]
+    assert md5_hex_digest(single_secret["clearText"]) == \
+        json_secret["signature"]
 
 
 def test_secrets_create_bulk_api_none_backend(bulk_secret):

@@ -1,7 +1,9 @@
 package none
 
 import (
+	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
 )
 
 //Client is the stuct implementing the backend client interface
@@ -20,10 +22,12 @@ func (n *Client) GetClearText(keyName, cipherText string) (string, error) {
 
 // Sign signs the message
 func (n *Client) Sign(keyName, clearText string) (string, error) {
-	return "", nil
+	hashBytes := md5.Sum([]byte(clearText))
+	return hex.EncodeToString(hashBytes[:]), nil
 }
 
 // VerifySignature verifies the signature created by the key
 func (n *Client) VerifySignature(keyName, signature, message string) (bool, error) {
-	return true, nil
+	hashBytes := md5.Sum([]byte(message))
+	return signature == hex.EncodeToString(hashBytes[:]), nil
 }
