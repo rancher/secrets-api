@@ -1,32 +1,62 @@
 package localkey
 
 import (
+	"errors"
 	"io/ioutil"
+	"os"
 
 	"github.com/Sirupsen/logrus"
 )
 
 type encryptionKey interface {
-	Key() ([]byte, error)
+	Key(name string) ([]byte, error)
+	//Key() ([]byte, error)
 }
 
 type keyFile struct {
 	pathName string
+	isDir    bool
 }
 
-func newEncryptionKey(keyType, keyPath string) encryptionKey {
+func newEncryptionKey(keyPath string) (encryptionKey, error) {
+	isDir, err := testIsDir(keyPath)
+	if err != nil {
+		return &keyFile{}, err
+	}
+
 	return &keyFile{
 		pathName: keyPath,
-	}
+		isDir:    isDir,
+	}, nil
 }
 
-func (kf *keyFile) Key() ([]byte, error) {
-	key, err := kf.readPrivateKey()
+func testIsDir(keyPath string) (bool, error) {
+	result := false
+
+	file, err := os.Open(keyPath)
 	if err != nil {
-		return []byte{}, err
+		return result, err
+	}
+	defer file.Close()
+
+	fs, err := file.Stat()
+	if err != nil {
+		return result, err
 	}
 
-	return key, nil
+	return fs.IsDir(), nil
+}
+
+func (kf *keyFile) Key(keyName string) ([]byte, error) {
+	if !kf.isDir {
+		key, err := kf.readPrivateKey()
+		if err != nil {
+			return []byte{}, err
+		}
+
+		return key, nil
+	}
+	return []byte{}, errors.New("No key found in directory")
 }
 
 func (kf *keyFile) readPrivateKey() ([]byte, error) {

@@ -21,7 +21,7 @@ func New(name string) (EncryptorClient, error) {
 		return &none.Client{}, nil
 	case "localkey":
 		if runtimeConfigs.EncryptionKeyPath != "" {
-			return localkey.NewLocalKeyAndInitBlock(runtimeConfigs.EncryptionKeyPath)
+			return localkey.NewLocalKey(runtimeConfigs.EncryptionKeyPath)
 		}
 		return nil, errors.New("No backend configured")
 	case "vault":

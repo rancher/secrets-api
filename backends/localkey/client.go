@@ -14,6 +14,7 @@ type Client struct {
 }
 
 type internalSecret struct {
+	KeyName    []byte
 	Nonce      []byte
 	Algorithm  string
 	CipherText []byte
@@ -25,21 +26,27 @@ func NewLocalKeyAndInitBlock(keyPath string) (*Client, error) {
 		return client, err
 	}
 
-	return client, client.InitBlock()
+	return client, client.InitBlock(keyPath)
 }
 
 func NewLocalKey(keyPath string) (*Client, error) {
-	if keyPath != "" {
-		return &Client{
-			encryptionKey: newEncryptionKey("file", keyPath),
-		}, nil
+	if keyPath == "" {
+		return &Client{}, errors.New("No encryption key path configured")
 	}
 
-	return &Client{}, errors.New("No encryption key path configured")
+	encKey, err := newEncryptionKey(keyPath)
+	if err != nil {
+		return &Client{}, err
+	}
+
+	return &Client{
+		encryptionKey: encKey,
+	}, nil
+
 }
 
-func (l *Client) InitBlock() error {
-	key, err := l.encryptionKey.Key()
+func (l *Client) InitBlock(keyName string) error {
+	key, err := l.encryptionKey.Key(keyName)
 	if err != nil {
 		return err
 	}
@@ -60,6 +67,7 @@ func (l *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 		Algorithm: "aes256-gcm",
 	}
 
+	l.InitBlock(keyName)
 	if l.cipher == nil {
 		return "", errors.New("Cipher Block not initialized")
 	}
@@ -91,6 +99,11 @@ func (l *Client) GetClearText(keyName, secretBlob string) (string, error) {
 	secret := &internalSecret{}
 
 	err := json.Unmarshal([]byte(secretBlob), secret)
+	if err != nil {
+		return "", err
+	}
+
+	err = l.InitBlock(keyName)
 	if err != nil {
 		return "", err
 	}
