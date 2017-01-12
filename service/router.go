@@ -14,11 +14,13 @@ import (
 
 var schemas *client.Schemas
 
+// HandleError is a wrapper that handles response codes and error messages
 func HandleError(s *client.Schemas, t func(http.ResponseWriter, *http.Request) (int, error)) http.Handler {
 	return api.ApiHandler(s, http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if code, err := t(rw, req); err != nil {
 			logrus.Errorf("Error in request, code : %d: %s", code, err)
 			apiContext := api.GetApiContext(req)
+			rw.WriteHeader(code)
 
 			apiContext.Write(&errObj{
 				Resource: client.Resource{
@@ -31,6 +33,7 @@ func HandleError(s *client.Schemas, t func(http.ResponseWriter, *http.Request) (
 	}))
 }
 
+// NewRouter creates the router for the application and wires up Rancher API spec schema
 func NewRouter() *mux.Router {
 	schemas = &client.Schemas{}
 	f := HandleError
