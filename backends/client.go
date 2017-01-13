@@ -10,18 +10,22 @@ import (
 
 var runtimeConfigs *Configs
 
+// EncryptorClient defines the interface for backend encryption clients
 type EncryptorClient interface {
 	GetEncryptedText(keyName string, clearText string) (string, error)
 	GetClearText(keyName string, cipherText string) (string, error)
+	Sign(keyName string, text string) (string, error)
+	VerifySignature(keyName string, signature string, message string) (bool, error)
 }
 
+// New returns an encrytion client of a specific type
 func New(name string) (EncryptorClient, error) {
 	switch name {
 	case "none":
 		return &none.Client{}, nil
 	case "localkey":
 		if runtimeConfigs.EncryptionKeyPath != "" {
-			return localkey.NewLocalKeyAndInitBlock(runtimeConfigs.EncryptionKeyPath)
+			return localkey.NewLocalKey(runtimeConfigs.EncryptionKeyPath)
 		}
 		return nil, errors.New("No backend configured")
 	case "vault":

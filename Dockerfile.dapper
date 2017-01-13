@@ -28,7 +28,7 @@ ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm=armv6l GOLANG_ARCH=GOLANG_ARCH_${ARC
 RUN wget -O - https://storage.googleapis.com/golang/go1.7.4.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
     go get github.com/rancher/trash && go get github.com/golang/lint/golint
 
-RUN curl -sL -o /tmp/vault.zip https://releases.hashicorp.com/vault/0.6.1/vault_0.6.1_linux_amd64.zip && \
+RUN curl -sL -o /tmp/vault.zip https://releases.hashicorp.com/vault/0.6.4/vault_0.6.4_linux_amd64.zip && \
     unzip /tmp/vault.zip -d /usr/bin/ 
     
 

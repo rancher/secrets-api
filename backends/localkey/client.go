@@ -3,11 +3,16 @@ package localkey
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"strings"
 )
 
+// Client implements the backend client interface
 type Client struct {
 	encryptionKey encryptionKey
 	cipher        cipher.Block
@@ -19,27 +24,26 @@ type internalSecret struct {
 	CipherText []byte
 }
 
-func NewLocalKeyAndInitBlock(keyPath string) (*Client, error) {
-	client, err := NewLocalKey(keyPath)
-	if err != nil {
-		return client, err
-	}
-
-	return client, client.InitBlock()
-}
-
+// NewLocalKey initializes a new local key
 func NewLocalKey(keyPath string) (*Client, error) {
-	if keyPath != "" {
-		return &Client{
-			encryptionKey: newEncryptionKey("file", keyPath),
-		}, nil
+	if keyPath == "" {
+		return &Client{}, errors.New("No encryption key path configured")
 	}
 
-	return &Client{}, errors.New("No encryption key path configured")
+	encKey, err := newEncryptionKey(keyPath)
+	if err != nil {
+		return &Client{}, err
+	}
+
+	return &Client{
+		encryptionKey: encKey,
+	}, nil
+
 }
 
-func (l *Client) InitBlock() error {
-	key, err := l.encryptionKey.Key()
+// InitBlock initializes the block cipher
+func (l *Client) InitBlock(keyName string) error {
+	key, err := l.encryptionKey.Key(keyName)
 	if err != nil {
 		return err
 	}
@@ -58,6 +62,11 @@ func (l *Client) InitBlock() error {
 func (l *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 	secret := &internalSecret{
 		Algorithm: "aes256-gcm",
+	}
+
+	err := l.InitBlock(keyName)
+	if err != nil {
+		return "", err
 	}
 
 	if l.cipher == nil {
@@ -95,6 +104,11 @@ func (l *Client) GetClearText(keyName, secretBlob string) (string, error) {
 		return "", err
 	}
 
+	err = l.InitBlock(keyName)
+	if err != nil {
+		return "", err
+	}
+
 	if l.cipher == nil {
 		return "", errors.New("Cipher Block not initialized")
 	}
@@ -110,6 +124,68 @@ func (l *Client) GetClearText(keyName, secretBlob string) (string, error) {
 	}
 
 	return string(plainText), nil
+}
+
+// Sign implements the interface
+func (l *Client) Sign(keyName, clearText string) (string, error) {
+	key, err := l.encryptionKey.Key(keyName)
+	if err != nil {
+		return "", err
+	}
+
+	nonce, err := randomNonce(12)
+	if err != nil {
+		return "", err
+	}
+
+	// Add a nonce so that we do not get collisions for the same input
+	signedMsg, err := sign(key, append(nonce, []byte(":"+clearText)...))
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(append(nonce, []byte(":"+string(signedMsg))...)), nil
+}
+
+func sign(key, msg []byte) ([]byte, error) {
+	mac := hmac.New(sha256.New, key)
+	mac.Write(msg)
+
+	return mac.Sum(nil), nil
+}
+
+// VerifySignature implements the interface.
+func (l *Client) VerifySignature(keyName, signature, message string) (bool, error) {
+	key, err := l.encryptionKey.Key(keyName)
+	if err != nil {
+		return false, err
+	}
+
+	byteSignature, err := base64.StdEncoding.DecodeString(signature)
+	if err != nil {
+		return false, err
+	}
+
+	splitSig := strings.SplitN(string(byteSignature), ":", 2)
+	if len(splitSig) != 2 {
+		return false, errors.New("Invalid signature input")
+	}
+
+	signedMsg, err := sign(key, append([]byte(splitSig[0]), []byte(":"+message)...))
+	if err != nil {
+		return false, err
+	}
+
+	return hmac.Equal([]byte(splitSig[1]), signedMsg), nil
+}
+
+func getb64randomNonce(byteLength int) (string, error) {
+	nonce, err := randomNonce(byteLength)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(nonce), nil
 }
 
 func randomNonce(byteLength int) ([]byte, error) {

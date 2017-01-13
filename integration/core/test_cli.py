@@ -1,6 +1,7 @@
 import requests
 import base64
 import pytest
+import hashlib
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA256
@@ -102,12 +103,25 @@ def get_decrypted_value(p_key, val):
     return cipher.decrypt(val)
 
 
-def python_post_response(url, json):
-    secret = requests.post(url, json=json)
+def _post(url, json):
+    secret = requests.post(url, json=json, timeout=10.0)
     print(secret.status_code)
     print(secret.json())
+    return secret
+
+
+def python_post_response(url, json):
+    secret = _post(url, json)
     assert secret.status_code == requests.codes.ok
+    assert secret.status_code != 400
     return secret.json()
+
+
+def verify_python_bad_post_response(url, json):
+    secret = _post(url, json)
+    resp = secret.json()
+    assert secret.status_code == 400
+    assert resp["type"] == "error"
 
 
 def verify_plain_text_from_enc(data, expected_value=secret_data["clearText"]):
@@ -117,12 +131,20 @@ def verify_plain_text_from_enc(data, expected_value=secret_data["clearText"]):
     assert expected_value == plain_text
 
 
+def md5_hex_digest(data):
+    m = hashlib.md5()
+    m.update(data)
+    return m.hexdigest()
+
+
 def test_secrets_create_api_none_backend(single_secret):
     json_secret = python_post_response(CREATE_URL, single_secret)
     expected_encoded = base64.b64encode(single_secret["clearText"])
 
     assert expected_encoded == json_secret["cipherText"]
     assert "" == json_secret["clearText"]
+    assert md5_hex_digest(single_secret["clearText"]) == \
+        json_secret["signature"]
 
 
 def test_secrets_create_bulk_api_none_backend(bulk_secret):
@@ -150,6 +172,25 @@ def test_secrets_rewrap_api_none_backend(single_secret):
     verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
 
 
+def test_secrets_rewrap_api_none_backend_invalid_signatures(single_secret):
+    json_secret = python_post_response(CREATE_URL, single_secret)
+
+    json_secret["rewrapKey"] = insecure_public_key
+    json_secret["signature"] = md5_hex_digest("bad signature")
+
+    verify_python_bad_post_response(REWRAP_URL, json_secret)
+
+
+def test_secrets_api_vault_backend_no_collisions(single_secret):
+    single_secret["backend"] = "vault"
+    single_secret["keyName"] = "rancher"
+    json_secret1 = python_post_response(CREATE_URL, single_secret)
+    json_secret2 = python_post_response(CREATE_URL, single_secret)
+
+    assert json_secret1["cipherText"] != json_secret2["cipherText"]
+    assert json_secret1["signature"] != json_secret2["signature"]
+
+
 def test_secrets_rewrap_api_vault_backend(single_secret):
     single_secret["backend"] = "vault"
     single_secret["keyName"] = "rancher"
@@ -167,6 +208,7 @@ def test_secrets_rewrap_api_vault_backend(single_secret):
 
 def test_secrets_rewrap_api_local_key_backend(single_secret):
     single_secret["backend"] = "localkey"
+    single_secret["keyName"] = "test_key"
     print(single_secret["clearText"])
     json_secret = python_post_response(CREATE_URL, single_secret)
 
@@ -177,6 +219,28 @@ def test_secrets_rewrap_api_local_key_backend(single_secret):
     assert "" == json_rewrapped_secret["cipherText"]
 
     verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
+
+
+def test_secrets_local_key_backend_same_text_avoids_collisions(single_secret):
+    single_secret["backend"] = "localkey"
+    single_secret["keyName"] = "test_key"
+    print(single_secret["clearText"])
+    json_secret1 = python_post_response(CREATE_URL, single_secret)
+    json_secret2 = python_post_response(CREATE_URL, single_secret)
+
+    assert json_secret1["cipherText"] != json_secret2["cipherText"]
+    assert json_secret1["signature"] != json_secret2["signature"]
+
+
+def test_secrets_rewrap_api_local_key_bad_signature_backend(single_secret):
+    single_secret["backend"] = "localkey"
+    single_secret["keyName"] = "test_key"
+    print(single_secret["clearText"])
+    json_secret = python_post_response(CREATE_URL, single_secret)
+
+    json_secret["rewrapKey"] = insecure_public_key
+    json_secret["signature"] = "itdontlookgood"
+    verify_python_bad_post_response(REWRAP_URL, json_secret)
 
 
 def test_secrets_rewrap_bulk_api_none_backend(bulk_secret):

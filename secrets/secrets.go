@@ -1,6 +1,8 @@
 package secrets
 
 import (
+	"errors"
+
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
 	"github.com/rancher/secrets-api/backends"
@@ -19,7 +21,26 @@ func GetSecretResource() *Secret {
 	return &Secret{}
 }
 
+func (s *Secret) clean(f func() error) error {
+	err := f()
+	s.ClearText = ""
+	return err
+}
+
+// Encrypt implements the interface and uses a wrapper
+// to ensure that clear text doesn't leave
 func (s *Secret) Encrypt() error {
+	return s.clean(s.encrypt)
+}
+
+// Rewrap implements the interface and uses a wrapper
+// to ensure that clear text doesn't leave
+func (s *Secret) Rewrap() error {
+	return s.clean(s.rewrap)
+}
+
+func (s *Secret) encrypt() error {
+
 	backend, err := backends.New(s.Backend)
 	if err != nil {
 		return err
@@ -30,12 +51,15 @@ func (s *Secret) Encrypt() error {
 		return err
 	}
 
-	s.ClearText = ""
+	s.Signature, err = backend.Sign(s.KeyName, s.ClearText)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (s *Secret) Rewrap() error {
+func (s *Secret) rewrap() error {
 	var err error
 	encData, err := s.wrapPlainText()
 	if err != nil {
@@ -47,7 +71,6 @@ func (s *Secret) Rewrap() error {
 	s.EncryptionAlgorithm = encData.EncryptionAlgorithm
 
 	s.CipherText = ""
-	s.ClearText = ""
 
 	return nil
 }
@@ -68,5 +91,9 @@ func (s *Secret) wrapPlainText() (*encryptedData, error) {
 		return nil, err
 	}
 
-	return pubKey.encrypt(clearText)
+	if match, err := backend.VerifySignature(s.KeyName, s.Signature, clearText); match && err == nil {
+		return pubKey.encrypt(clearText)
+	}
+
+	return nil, errors.New("Signatures did not match")
 }

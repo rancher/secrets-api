@@ -28,6 +28,7 @@ type Secret struct {
 	RewrapKey           string `json:"rewrapKey,omitempty"`
 	HashAlgorithm       string `json:"hashAlgorithm"`
 	EncryptionAlgorithm string `json:"encryptionAglorigthm"`
+	Signature           string `json:"signature"`
 }
 
 type rsaPublicKey struct {

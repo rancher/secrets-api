@@ -8,12 +8,13 @@ type testKey struct {
 	key []byte
 }
 
-func (tk *testKey) Key() ([]byte, error) {
+func (tk *testKey) Key(keyName string) ([]byte, error) {
 	return tk.key, nil
 }
 
 func TestLocalKeyClient(t *testing.T) {
-	client, err := NewLocalKey("./integration/data/key")
+	// Give it a real directory... but we are going to override the key
+	client, err := NewLocalKey("./")
 	if err != nil {
 		t.Error(err)
 	}
@@ -24,7 +25,7 @@ func TestLocalKeyClient(t *testing.T) {
 	}
 
 	client.encryptionKey = &testKey{key: key}
-	client.InitBlock()
+	client.InitBlock("testKey")
 
 	encdata, err := client.GetEncryptedText("testing", secretText)
 	if err != nil {
