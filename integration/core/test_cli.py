@@ -181,6 +181,16 @@ def test_secrets_rewrap_api_none_backend_invalid_signatures(single_secret):
     verify_python_bad_post_response(REWRAP_URL, json_secret)
 
 
+def test_secrets_api_vault_backend_no_collisions(single_secret):
+    single_secret["backend"] = "vault"
+    single_secret["keyName"] = "rancher"
+    json_secret1 = python_post_response(CREATE_URL, single_secret)
+    json_secret2 = python_post_response(CREATE_URL, single_secret)
+
+    assert json_secret1["cipherText"] != json_secret2["cipherText"]
+    assert json_secret1["signature"] != json_secret2["signature"]
+
+
 def test_secrets_rewrap_api_vault_backend(single_secret):
     single_secret["backend"] = "vault"
     single_secret["keyName"] = "rancher"

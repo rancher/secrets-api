@@ -13,6 +13,7 @@ export VAULT_TOKEN=${VAULT_ROOT_TOKEN_ID}
 export VAULT_ADDR=http://127.0.0.1:8200
 
 /usr/bin/vault server -dev -dev-root-token-id=${VAULT_ROOT_TOKEN_ID} &
+sleep 10
 /usr/bin/vault mount transit
 /usr/bin/vault mounts
 /usr/bin/vault write -f transit/keys/rancher
