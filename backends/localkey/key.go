@@ -13,6 +13,7 @@ type encryptionKey interface {
 }
 
 type keyFile struct {
+	keys     map[string][]byte
 	pathName string
 	isDir    bool
 }
@@ -26,6 +27,7 @@ func newEncryptionKey(keyPath string) (encryptionKey, error) {
 	return &keyFile{
 		pathName: keyPath,
 		isDir:    isDir,
+		keys:     map[string][]byte{},
 	}, nil
 }
 
@@ -53,5 +55,19 @@ func (kf *keyFile) Key(keyName string) ([]byte, error) {
 		keyFile = path.Join(kf.pathName, keyName)
 	}
 
-	return ioutil.ReadFile(keyFile)
+	// If we have seen the key, return it from mem
+	if k, ok := kf.keys[keyFile]; ok {
+		return k, nil
+	}
+
+	// Load the key from disk
+	key, err := ioutil.ReadFile(keyFile)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	// Save the Key to mem to avoid future IO.
+	kf.keys[keyFile] = key
+
+	return key, nil
 }
