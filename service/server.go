@@ -5,7 +5,7 @@ import (
 )
 
 // StartServer creates and initializes the server api
-func StartServer() error {
+func StartServer(listenAddress string) error {
 	router := NewRouter()
-	return http.ListenAndServe(":8181", router)
+	return http.ListenAndServe(listenAddress, router)
 }
