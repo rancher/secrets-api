@@ -142,7 +142,7 @@ def test_secrets_create_api_none_backend(single_secret):
     expected_encoded = base64.b64encode(single_secret["clearText"])
 
     assert expected_encoded == json_secret["cipherText"]
-    assert "" == json_secret["clearText"]
+    assert "clearText" not in json_secret.keys()
     assert md5_hex_digest(single_secret["clearText"]) == \
         json_secret["signature"]
 
@@ -156,7 +156,7 @@ def test_secrets_create_bulk_api_none_backend(bulk_secret):
         expected_encoded = base64.b64encode(
                 secrets_bulk_data["data"][i]["clearText"])
         assert expected_encoded == secret["cipherText"]
-        assert "" == secret["clearText"]
+        assert "clearText" not in secret.keys()
         i += 1
 
 
@@ -166,8 +166,8 @@ def test_secrets_rewrap_api_none_backend(single_secret):
     json_secret["rewrapKey"] = insecure_public_key
     json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
 
-    assert "" == json_rewrapped_secret["clearText"]
-    assert "" == json_rewrapped_secret["cipherText"]
+    assert "clearText" not in json_rewrapped_secret.keys()
+    assert "cipherText" not in json_rewrapped_secret.keys()
 
     verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
 
@@ -199,8 +199,8 @@ def test_secrets_rewrap_api_vault_backend(single_secret):
     json_secret["rewrapKey"] = insecure_public_key
     json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
 
-    assert "" == json_rewrapped_secret["clearText"]
-    assert "" == json_rewrapped_secret["cipherText"]
+    assert "clearText" not in json_rewrapped_secret.keys()
+    assert "cipherText" not in json_rewrapped_secret.keys()
 
     verify_plain_text_from_enc(
             json_rewrapped_secret["rewrapText"], single_secret["clearText"])
@@ -215,8 +215,8 @@ def test_secrets_rewrap_api_local_key_backend(single_secret):
     json_secret["rewrapKey"] = insecure_public_key
     json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
 
-    assert "" == json_rewrapped_secret["clearText"]
-    assert "" == json_rewrapped_secret["cipherText"]
+    assert "clearText" not in json_rewrapped_secret.keys()
+    assert "cipherText" not in json_rewrapped_secret.keys()
 
     verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
 
@@ -256,8 +256,8 @@ def test_secrets_rewrap_bulk_api_none_backend(bulk_secret):
 
     i = 0
     for secret in json_rewrapped_secrets["data"]:
-        assert "" == secret["clearText"]
-        assert "" == secret["cipherText"]
+        assert "clearText" not in secret.keys()
+        assert "cipherText" not in secret.keys()
 
         verify_plain_text_from_enc(
                 secret["rewrapText"],
