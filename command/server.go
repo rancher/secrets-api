@@ -27,6 +27,12 @@ func ServerCommand() cli.Command {
 				Usage:  "URL For Vault server with Transit backend enabled",
 				EnvVar: "VAULT_TOKEN",
 			},
+			cli.StringFlag{
+				Name:   "listen-address",
+				Usage:  "Address to listen on",
+				Value:  "127.0.0.1:8181",
+				EnvVar: "SECRETS_API_LISTEN_ADDRESS",
+			},
 		},
 	}
 }
@@ -40,5 +46,5 @@ func startServer(c *cli.Context) error {
 
 	backends.SetBackendConfigs(backendConfig)
 
-	return service.StartServer()
+	return service.StartServer(c.String("listen-address"))
 }
