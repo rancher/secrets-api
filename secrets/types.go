@@ -22,9 +22,9 @@ type Secret struct {
 	SecretName          string `json:"name"`
 	Backend             string `json:"backend"`
 	KeyName             string `json:"keyName"`
-	CipherText          string `json:"cipherText"`
-	ClearText           string `json:"clearText"`
-	RewrapText          string `json:"rewrapText"`
+	CipherText          string `json:"cipherText,omitempty"`
+	ClearText           string `json:"clearText,omitempty"`
+	RewrapText          string `json:"rewrapText,omitempty"`
 	RewrapKey           string `json:"rewrapKey,omitempty"`
 	HashAlgorithm       string `json:"hashAlgorithm"`
 	EncryptionAlgorithm string `json:"encryptionAglorigthm"`
