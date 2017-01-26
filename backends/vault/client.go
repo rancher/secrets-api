@@ -1,10 +1,11 @@
 package vault
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
+
+	"encoding/base64"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/hashicorp/vault/api"
@@ -29,9 +30,8 @@ func NewClient(url, token string) (*Client, error) {
 func (v *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 	encryptPath := fmt.Sprintf("/transit/encrypt/%s", keyName)
 
-	preparedInput := prepareInput(clearText)
 	data := map[string]interface{}{
-		"plaintext": preparedInput,
+		"plaintext": clearText,
 	}
 
 	secret, err := v.writeToVault(encryptPath, data)
@@ -58,11 +58,7 @@ func (v *Client) GetClearText(keyName, cipherText string) (string, error) {
 	}
 
 	if plainText, ok := secret.Data["plaintext"].(string); ok && plainText != "" {
-		byteString, err := base64.StdEncoding.DecodeString(plainText)
-		if err != nil {
-			return "", err
-		}
-		return string(byteString), nil
+		return plainText, nil
 	}
 
 	return "", errors.New("Could not decrypt ciphertext")
@@ -85,7 +81,7 @@ func (v *Client) Sign(keyName, clearText string) (string, error) {
 		return "", errors.New("Could not generate nonce")
 	}
 
-	data["input"] = prepareInput(nonce + ":" + clearText)
+	data["input"], _ = formatSignatureString(nonce, clearText)
 
 	secret, err := v.writeToVault(hmacPath, data)
 	if err != nil {
@@ -112,9 +108,10 @@ func (v *Client) VerifySignature(keyName, signature, message string) (bool, erro
 	nonce := sigSplit[0]
 
 	data := map[string]interface{}{
-		"hmac":  sigSplit[1],
-		"input": prepareInput(nonce + ":" + message),
+		"hmac": sigSplit[1],
 	}
+
+	data["input"], _ = formatSignatureString(nonce, message)
 
 	secret, err := v.writeToVault(comparePath, data)
 	if err != nil {
@@ -135,15 +132,6 @@ func (v *Client) writeToVault(path string, data map[string]interface{}) (*api.Se
 	}
 
 	return vaultClient.Logical().Write(path, data)
-}
-
-//Vault expects input to be base64 encoded
-func prepareInput(text string) string {
-	if _, err := base64.StdEncoding.DecodeString(text); err != nil {
-		return base64.StdEncoding.EncodeToString([]byte(text))
-	}
-
-	return text
 }
 
 func (v *Client) getVaultClient() (*api.Client, error) {
@@ -175,4 +163,8 @@ func testVaultTransitKeyExists(vaultCli *api.Client, keyName string) (bool, erro
 	}
 
 	return exists, nil
+}
+
+func formatSignatureString(nonce, data string) (string, error) {
+	return base64.StdEncoding.EncodeToString([]byte(nonce + ":" + data)), nil
 }
