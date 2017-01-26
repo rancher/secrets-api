@@ -3,6 +3,8 @@ package secrets
 import (
 	"errors"
 
+	"encoding/base64"
+
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
 	"github.com/rancher/secrets-api/backends"
@@ -40,6 +42,9 @@ func (s *Secret) Rewrap() error {
 }
 
 func (s *Secret) encrypt() error {
+	if _, err := base64.StdEncoding.DecodeString(s.ClearText); err != nil {
+		s.ClearText = base64.StdEncoding.EncodeToString([]byte(s.ClearText))
+	}
 
 	backend, err := backends.New(s.Backend)
 	if err != nil {

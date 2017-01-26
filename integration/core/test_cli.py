@@ -18,6 +18,14 @@ secret_data = {
         "backend": "none"
         }
 
+secret_b64_data = {
+        "type": "secret",
+        "name": "secret1",
+        "clearText": "aGVsbG8=",
+        "backend": "none"
+        }
+
+
 secrets_bulk_data = {
         "data": [
           {
@@ -50,6 +58,11 @@ def bulk_secret(scope="function"):
 @pytest.fixture(scope="function")
 def single_secret():
     return secret_data
+
+
+@pytest.fixture(scope="function")
+def single_b64_secret():
+    return secret_b64_data
 
 
 insecure_private_key = '''-----BEGIN RSA PRIVATE KEY-----
@@ -128,7 +141,7 @@ def verify_plain_text_from_enc(data, expected_value=secret_data["clearText"]):
     plain_text = get_decrypted_value(insecure_private_key,
                                      base64.b64decode(data))
 
-    assert expected_value == plain_text
+    assert expected_value == base64.b64decode(plain_text)
 
 
 def md5_hex_digest(data):
@@ -137,17 +150,22 @@ def md5_hex_digest(data):
     return m.hexdigest()
 
 
-def test_secrets_create_api_none_backend(single_secret):
-    json_secret = python_post_response(CREATE_URL, single_secret)
-    expected_encoded = base64.b64encode(single_secret["clearText"])
+def test_secrets_create_api_none_backend(single_b64_secret):
+    json_secret = python_post_response(CREATE_URL, single_b64_secret)
+    expected_encoded = single_b64_secret["clearText"]
 
-    assert expected_encoded == json_secret["cipherText"]
+    assert expected_encoded == base64.b64decode(json_secret["cipherText"])
     assert "clearText" not in json_secret.keys()
-    assert md5_hex_digest(single_secret["clearText"]) == \
+    assert md5_hex_digest(expected_encoded) == \
         json_secret["signature"]
 
 
 def test_secrets_create_bulk_api_none_backend(bulk_secret):
+    '''
+    This test validates that the plain text was base64 encoded
+    and then re-encoded. Proving that the end result would need
+    to be base64 decoded
+    '''
     bulk_url = CREATE_URL + "?action=bulk"
     json_secrets = python_post_response(bulk_url, bulk_secret)
 
@@ -155,13 +173,13 @@ def test_secrets_create_bulk_api_none_backend(bulk_secret):
     for secret in json_secrets["data"]:
         expected_encoded = base64.b64encode(
                 secrets_bulk_data["data"][i]["clearText"])
-        assert expected_encoded == secret["cipherText"]
+        assert expected_encoded == base64.b64decode(secret["cipherText"])
         assert "clearText" not in secret.keys()
         i += 1
 
 
-def test_secrets_rewrap_api_none_backend(single_secret):
-    json_secret = python_post_response(CREATE_URL, single_secret)
+def test_secrets_rewrap_api_none_backend(single_b64_secret):
+    json_secret = python_post_response(CREATE_URL, single_b64_secret)
 
     json_secret["rewrapKey"] = insecure_public_key
     json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
@@ -169,7 +187,8 @@ def test_secrets_rewrap_api_none_backend(single_secret):
     assert "clearText" not in json_rewrapped_secret.keys()
     assert "cipherText" not in json_rewrapped_secret.keys()
 
-    verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
+    verify_plain_text_from_enc(
+        json_rewrapped_secret["rewrapText"])
 
 
 def test_secrets_rewrap_api_none_backend_invalid_signatures(single_secret):
@@ -191,9 +210,43 @@ def test_secrets_api_vault_backend_no_collisions(single_secret):
     assert json_secret1["signature"] != json_secret2["signature"]
 
 
-def test_secrets_rewrap_api_vault_backend(single_secret):
+def test_secrets_rewrap_api_vault_backend(single_secret, single_b64_secret):
+    '''
+    This flow verifies that Vault backend can handle b64 and plaintext
+    inputs.
+    '''
     single_secret["backend"] = "vault"
     single_secret["keyName"] = "rancher"
+    json_secret = python_post_response(CREATE_URL, single_secret)
+
+    single_b64_secret["backend"] = "vault"
+    single_b64_secret["keyName"] = "rancher"
+    json_b64_secret = python_post_response(CREATE_URL, single_b64_secret)
+
+    json_secret["rewrapKey"] = insecure_public_key
+    json_b64_secret["rewrapKey"] = insecure_public_key
+    json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
+    json_b64_rewrapped_secret = python_post_response(
+        REWRAP_URL, json_b64_secret)
+
+    assert "clearText" not in json_rewrapped_secret.keys()
+    assert "cipherText" not in json_rewrapped_secret.keys()
+
+    assert "cipherText" not in json_b64_rewrapped_secret.keys()
+    assert "cipherText" not in json_b64_rewrapped_secret.keys()
+
+    verify_plain_text_from_enc(
+            json_rewrapped_secret["rewrapText"], single_secret["clearText"])
+
+    verify_plain_text_from_enc(
+            json_b64_rewrapped_secret["rewrapText"],
+            single_secret["clearText"])
+
+
+def test_secrets_rewrap_api_local_key_backend(single_secret):
+    single_secret["backend"] = "localkey"
+    single_secret["keyName"] = "test_key"
+    print(single_secret["clearText"])
     json_secret = python_post_response(CREATE_URL, single_secret)
 
     json_secret["rewrapKey"] = insecure_public_key
@@ -202,11 +255,12 @@ def test_secrets_rewrap_api_vault_backend(single_secret):
     assert "clearText" not in json_rewrapped_secret.keys()
     assert "cipherText" not in json_rewrapped_secret.keys()
 
-    verify_plain_text_from_enc(
-            json_rewrapped_secret["rewrapText"], single_secret["clearText"])
+    verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
 
 
-def test_secrets_rewrap_api_local_key_backend(single_secret):
+def test_secrets_rewrap_api_b64_input_local_key_backend(single_b64_secret):
+    single_secret = single_b64_secret
+
     single_secret["backend"] = "localkey"
     single_secret["keyName"] = "test_key"
     print(single_secret["clearText"])
