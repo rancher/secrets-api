@@ -13,8 +13,9 @@ type SecretCollection struct {
 
 type BulkSecret struct {
 	client.Resource
-	Data      []Secret `json:"data,omitempty"`
-	RewrapKey string   `json:"rewrapKey,omitempty"`
+	Data         []Secret `json:"data,omitempty"`
+	RewrapKey    string   `json:"rewrapKey,omitempty"`
+	RewrappedKey string   `json:"rewrappedKey,omitempty"`
 }
 
 type Secret struct {
@@ -26,6 +27,7 @@ type Secret struct {
 	ClearText           string `json:"clearText,omitempty"`
 	RewrapText          string `json:"rewrapText,omitempty"`
 	RewrapKey           string `json:"rewrapKey,omitempty"`
+	RewrappedKey        string `json:"rewrappedKey,omitempty"`
 	HashAlgorithm       string `json:"hashAlgorithm"`
 	EncryptionAlgorithm string `json:"encryptionAglorigthm"`
 	Signature           string `json:"signature"`
