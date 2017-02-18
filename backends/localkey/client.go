@@ -1,7 +1,6 @@
 package localkey
 
 import (
-	"encoding/json"
 	"errors"
 	"os"
 	"path"
@@ -52,40 +51,14 @@ func (l *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 	return aesutils.GetEncryptedText(key, clearText, "aes256-gcm")
 }
 
-// GetClearText localkey Client just returns the cipherText
+// GetClearText localkey Client
 func (l *Client) GetClearText(keyName, secretBlob string) (string, error) {
 	key, err := l.loadEncryptionKeyFromPath(keyName)
 	if err != nil {
 		return "", err
 	}
 
-	sanitizedSecretBlob, err := convertNonceToIV(secretBlob)
-	if err != nil {
-		return "", err
-	}
-	return aesutils.GetClearText(key, sanitizedSecretBlob)
-}
-
-// If old secrets are going to work...
-func convertNonceToIV(secret string) (string, error) {
-	iSecret := &internalSecret{}
-
-	err := json.Unmarshal([]byte(secret), iSecret)
-	if err != nil {
-		return "", err
-	}
-
-	if iSecret.Nonce != nil && iSecret.IV == nil {
-		iSecret.IV = iSecret.Nonce
-		iSecret.Nonce = nil
-	}
-
-	secretBytes, err := json.Marshal(iSecret)
-	if err != nil {
-		return "", err
-	}
-
-	return string(secretBytes), nil
+	return aesutils.GetClearText(key, secretBlob)
 }
 
 // Sign implements the interface

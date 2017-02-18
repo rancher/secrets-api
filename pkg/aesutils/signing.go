@@ -15,7 +15,7 @@ func Sign(aesKey AESKey, clearText string) (string, error) {
 		return "", err
 	}
 
-	IV, err := randomIV(12)
+	IV, err := randomNonce(12)
 	if err != nil {
 		return "", err
 	}

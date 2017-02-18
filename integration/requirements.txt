@@ -1,6 +1,7 @@
 cattle==0.5.1
 requests
 pycrypto==2.6.1
+cryptography==1.7.2
 
 flake8
 pytest==2.3.5

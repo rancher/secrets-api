@@ -8,6 +8,7 @@ RUN apt-get update && \
     apt-get install -y \
         gcc \
         python2.7-minimal \
+        libssl-dev \
         python-tox \
         python-dev \
         libpython-dev \
