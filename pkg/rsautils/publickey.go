@@ -1,4 +1,4 @@
-package secrets
+package rsautils
 
 import (
 	"crypto/rand"
@@ -12,25 +12,29 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-func newPublicKey(pKey string) (*rsaPublicKey, error) {
-	key, err := loadRSAPublicKey(pKey)
-	return &rsaPublicKey{key}, err
+// RSAPublicKey a struct to hold an RSA Public Key
+type RSAPublicKey struct {
+	*rsa.PublicKey
 }
 
-func (pk *rsaPublicKey) encrypt(text string) (*encryptedData, error) {
+// PublicKeyFromString returns an RSA public key object from a string
+func PublicKeyFromString(pKey string) (*RSAPublicKey, error) {
+	key, err := loadRSAPublicKey(pKey)
+	return &RSAPublicKey{key}, err
+}
+
+// Encrypt uses RSA Public key to encrypt data
+func (pk *RSAPublicKey) Encrypt(text string) (string, error) {
 	rng := rand.Reader
 	cipherText, err := rsa.EncryptOAEP(sha256.New(), rng, pk.PublicKey, []byte(text), []byte(""))
 
-	return &encryptedData{
-		EncryptionAlgorithm: "RSA-PKCS1-OAEP",
-		EncryptedText:       base64.StdEncoding.EncodeToString(cipherText),
-		HashAlgorithm:       "sha256",
-	}, err
+	return base64.StdEncoding.EncodeToString(cipherText), err
 }
 
 func loadRSAPublicKey(key string) (*rsa.PublicKey, error) {
 	block, val := pem.Decode([]byte(key))
 	if block == nil {
+		// This is supposed to be a public key so we can log
 		logrus.Debugf(string(val))
 		return nil, errors.New("Could not decode public key block")
 	}

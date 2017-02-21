@@ -1,9 +1,8 @@
 package secrets
 
 import (
-	"crypto/rsa"
-
 	"github.com/rancher/go-rancher/client"
+	"github.com/rancher/secrets-api/pkg/aesutils"
 )
 
 type SecretCollection struct {
@@ -13,9 +12,8 @@ type SecretCollection struct {
 
 type BulkSecret struct {
 	client.Resource
-	Data         []Secret `json:"data,omitempty"`
-	RewrapKey    string   `json:"rewrapKey,omitempty"`
-	RewrappedKey string   `json:"rewrappedKey,omitempty"`
+	Data      []Secret `json:"data,omitempty"`
+	RewrapKey string   `json:"rewrapKey,omitempty"`
 }
 
 type Secret struct {
@@ -27,18 +25,22 @@ type Secret struct {
 	ClearText           string `json:"clearText,omitempty"`
 	RewrapText          string `json:"rewrapText,omitempty"`
 	RewrapKey           string `json:"rewrapKey,omitempty"`
-	RewrappedKey        string `json:"rewrappedKey,omitempty"`
 	HashAlgorithm       string `json:"hashAlgorithm"`
 	EncryptionAlgorithm string `json:"encryptionAglorigthm"`
 	Signature           string `json:"signature"`
+	tmpKey              aesutils.AESKey
 }
 
-type rsaPublicKey struct {
-	*rsa.PublicKey
+type EncryptedData struct {
+	EncryptionAlgorithm string           `json:"encryptionAlgorithm,omitempty"`
+	EncryptedText       string           `json:"encryptedText,omitempty"`
+	HashAlgorithm       string           `json:"hashAlgorithm,omitempty"`
+	EncryptedKey        RSAEncryptedData `json:"encryptedKey,omitempty"`
+	Signature           string           `json:"signature,omitempty"`
 }
 
-type encryptedData struct {
-	EncryptionAlgorithm string
-	EncryptedText       string
-	HashAlgorithm       string
+type RSAEncryptedData struct {
+	EncryptionAlgorithm string `json:"encryptionAlgorithm,omitempty"`
+	EncryptedText       string `json:"encryptedText,omitempty"`
+	HashAlgorithm       string `json:"hashAlgorithm,omitempty"`
 }

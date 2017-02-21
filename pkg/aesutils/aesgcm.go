@@ -10,7 +10,7 @@ import (
 )
 
 type AESSecret struct {
-	IV         []byte
+	Nonce      []byte
 	Algorithm  string
 	CipherText []byte
 }
@@ -21,10 +21,14 @@ func NewAESKeyFromFile(keyPath string) (AESKey, error) {
 
 func NewRandomAESKey(length int) (AESKey, error) {
 	var err error
-	if k, err := randomIV(32); err == nil {
+	if k, err := randomNonce(32); err == nil {
 		return &randomKey{key: k}, nil
 	}
 	return nil, err
+}
+
+func NewAESKeyFromBytes(key []byte) AESKey {
+	return &randomKey{key: key}
 }
 
 func InitBlock(aesKey AESKey) (cipher.Block, error) {
@@ -56,19 +60,19 @@ func GetEncryptedText(key AESKey, clearText string, algorithm string) (string, e
 		return "", err
 	}
 
-	IV, err := randomIV(12)
+	nonce, err := randomNonce(12)
 	if err != nil {
 		return "", err
 	}
 
-	secret.IV = IV
+	secret.Nonce = nonce
 
 	gcm, err := cipher.NewGCM(cipherBlock)
 	if err != nil {
 		return "", err
 	}
 
-	secret.CipherText = gcm.Seal(nil, secret.IV, []byte(clearText), nil)
+	secret.CipherText = gcm.Seal(nil, secret.Nonce, []byte(clearText), nil)
 
 	jsonSecret, err := json.Marshal(secret)
 	if err != nil {
@@ -97,7 +101,7 @@ func GetClearText(key AESKey, secretBlob string) (string, error) {
 		return "", err
 	}
 
-	plainText, err := gcm.Open(nil, secret.IV, secret.CipherText, nil)
+	plainText, err := gcm.Open(nil, secret.Nonce, secret.CipherText, nil)
 	if err != nil {
 		return "", err
 	}
@@ -105,7 +109,7 @@ func GetClearText(key AESKey, secretBlob string) (string, error) {
 	return string(plainText), nil
 }
 
-func randomIV(byteLength int) ([]byte, error) {
+func randomNonce(byteLength int) ([]byte, error) {
 	key := make([]byte, byteLength)
 
 	_, err := rand.Read(key)
@@ -116,11 +120,11 @@ func randomIV(byteLength int) ([]byte, error) {
 	return key, nil
 }
 
-func getB64RandomIV(byteLength int) (string, error) {
-	IV, err := randomIV(byteLength)
+func getB64RandomNonce(byteLength int) (string, error) {
+	nonce, err := randomNonce(byteLength)
 	if err != nil {
 		return "", err
 	}
 
-	return base64.StdEncoding.EncodeToString(IV), nil
+	return base64.StdEncoding.EncodeToString(nonce), nil
 }
