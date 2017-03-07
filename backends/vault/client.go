@@ -54,6 +54,9 @@ func (v *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 	if cipherText, ok := secret.Data["ciphertext"].(string); ok && cipherText != "" {
 		if v.storageDir != "" {
 			cipherText, err = v.storeSecretInVault(cipherText)
+			if err != nil {
+				return "", err
+			}
 		}
 		return cipherText, nil
 	}
@@ -147,6 +150,22 @@ func (v *Client) VerifySignature(keyName, signature, message string) (bool, erro
 	return false, nil
 }
 
+func (v *Client) Delete(keyName, cipherText string) error {
+	client, err := v.getVaultClient()
+	if err != nil {
+		return err
+	}
+
+	if v.storageDir != "" {
+		_, err := client.Logical().Delete(cipherText)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (v *Client) writeToVault(path string, data map[string]interface{}) (*api.Secret, error) {
 	vaultClient, err := v.getVaultClient()
 	if err != nil {
@@ -166,8 +185,10 @@ func (v *Client) getStorageDir() (string, error) {
 		return "", err
 	}
 
-	if storageDir, ok := secret.Data["meta"].(map[string]interface{})["storage_dir"]; ok {
-		return storageDir.(string), nil
+	if meta, ok := secret.Data["meta"].(map[string]interface{}); ok {
+		if storageDir, ok := meta["storage_dir"]; ok {
+			return storageDir.(string), nil
+		}
 	}
 
 	return "", nil

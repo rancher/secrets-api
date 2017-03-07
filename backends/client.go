@@ -16,6 +16,7 @@ type EncryptorClient interface {
 	GetClearText(keyName string, cipherText string) (string, error)
 	Sign(keyName string, text string) (string, error)
 	VerifySignature(keyName string, signature string, message string) (bool, error)
+	Delete(keyName, cipherText string) error
 }
 
 // New returns an encrytion client of a specific type

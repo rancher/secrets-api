@@ -81,6 +81,11 @@ func (l *Client) VerifySignature(keyName, signature, message string) (bool, erro
 	return aesutils.VerifySignature(key, signature, message)
 }
 
+// Delete No op nothing stored
+func (l *Client) Delete(keyName, cipherText string) error {
+	return nil
+}
+
 func testIsDir(keyPath string) (bool, error) {
 	result := false
 

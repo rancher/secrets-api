@@ -61,6 +61,14 @@ func NewRouter() *mux.Router {
 			Input:  "bulkSecret",
 			Output: "bulkSecret",
 		},
+		"purge": {
+			Input:  "secret",
+			Output: "secret",
+		},
+		"purge?action=bulk": {
+			Input:  "bulkSecret",
+			Output: "bulkSecret",
+		},
 	}
 
 	router := mux.NewRouter().StrictSlash(false)
@@ -95,6 +103,15 @@ func NewRouter() *mux.Router {
 		Handler(f(schemas, BulkRewrapSecret))
 
 	router.Methods("POST").Path("/v1-secrets/secrets/rewrap").Handler(f(schemas, RewrapSecret))
+
+	router.Methods("POST").
+		Path("/v1-secrets/secrets/delete").
+		Queries("action", "bulk").
+		Handler(f(schemas, BulkDeleteSecret))
+
+	router.Methods("POST").
+		Path("/v1-secrets/secrets/delete").
+		Handler(f(schemas, DeleteSecret))
 
 	// These just loop back to themselves in the schemas
 	router.Methods("GET").Path("/v1-secrets/secrets/create").Handler(f(schemas, ListSecrets))

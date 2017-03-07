@@ -31,3 +31,8 @@ func (n *Client) VerifySignature(keyName, signature, message string) (bool, erro
 	hashBytes := md5.Sum([]byte(message))
 	return signature == hex.EncodeToString(hashBytes[:]), nil
 }
+
+// Delete No Op, not stored.
+func (n *Client) Delete(keyName, cipherText string) error {
+	return nil
+}
