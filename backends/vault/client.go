@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,17 +14,27 @@ import (
 
 // Client is the struct that implements the backend interface
 type Client struct {
-	url   string
-	token string
+	url        string
+	token      string
+	storageDir string
 }
 
 // NewClient returns a Client type that is ready to interact
 // with vault
 func NewClient(url, token string) (*Client, error) {
-	return &Client{
+	var err error
+
+	client := &Client{
 		url:   url,
 		token: token,
-	}, nil
+	}
+
+	client.storageDir, err = client.getStorageDir()
+	if err != nil {
+		return client, err
+	}
+
+	return client, nil
 }
 
 // GetEncryptedText None Client just returns the clearText
@@ -41,6 +52,9 @@ func (v *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 	}
 
 	if cipherText, ok := secret.Data["ciphertext"].(string); ok && cipherText != "" {
+		if v.storageDir != "" {
+			cipherText, err = v.storeSecretInVault(cipherText)
+		}
 		return cipherText, nil
 	}
 
@@ -49,7 +63,15 @@ func (v *Client) GetEncryptedText(keyName, clearText string) (string, error) {
 
 // GetClearText  None Client just returns the cipherText
 func (v *Client) GetClearText(keyName, cipherText string) (string, error) {
+	var err error
 	decryptPath := fmt.Sprintf("/transit/decrypt/%s", keyName)
+
+	if v.storageDir != "" {
+		cipherText, err = v.retrieveSecretFromVault(cipherText)
+		if err != nil {
+			return "", err
+		}
+	}
 
 	secret, err := v.writeToVault(decryptPath, map[string]interface{}{"ciphertext": cipherText})
 	if err != nil {
@@ -134,6 +156,23 @@ func (v *Client) writeToVault(path string, data map[string]interface{}) (*api.Se
 	return vaultClient.Logical().Write(path, data)
 }
 
+func (v *Client) getStorageDir() (string, error) {
+	tokenLookupData := map[string]interface{}{
+		"token": v.token,
+	}
+
+	secret, err := v.writeToVault("/auth/token/lookup", tokenLookupData)
+	if err != nil {
+		return "", err
+	}
+
+	if storageDir, ok := secret.Data["meta"].(map[string]interface{})["storage_dir"]; ok {
+		return storageDir.(string), nil
+	}
+
+	return "", nil
+}
+
 func (v *Client) getVaultClient() (*api.Client, error) {
 	config := api.DefaultConfig()
 	config.Address = v.url
@@ -167,4 +206,41 @@ func testVaultTransitKeyExists(vaultCli *api.Client, keyName string) (bool, erro
 
 func formatSignatureString(nonce, data string) (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(nonce + ":" + data)), nil
+}
+
+func (v *Client) storeSecretInVault(cipherText string) (string, error) {
+	// write secret to path in Vault
+	hash := sha256.New()
+	hash.Write([]byte(cipherText))
+
+	path := fmt.Sprintf("%s/v1-secrets/%x", v.storageDir, string(hash.Sum(nil)))
+
+	_, err := v.writeToVault(path, map[string]interface{}{
+		"cipherText": cipherText,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// we will just pass back the location
+	return path, nil
+}
+
+func (v *Client) retrieveSecretFromVault(path string) (string, error) {
+	cli, err := v.getVaultClient()
+	if err != nil {
+		return "", err
+	}
+
+	secret, err := cli.Logical().Read(path)
+	if err != nil {
+		return "", err
+	}
+
+	logrus.Debugf("%#v", secret)
+	if text, ok := secret.Data["cipherText"]; ok {
+		return text.(string), nil
+	}
+
+	return "", fmt.Errorf("No CipherText at this location")
 }
