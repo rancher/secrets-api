@@ -1,21 +1,33 @@
-import ast
 import requests
 import base64
 import pytest
 import hashlib
-import binascii
-import json
+import hvac
 
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
-from Crypto.Hash import SHA256
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
 
 
 URL = 'http://localhost:8181'
+ALT_URL = 'http://localhost:18181'
+
+VAULT_STORAGE_URL = 'http://127.0.0.1:18200'
+
 CREATE_URL = URL + "/v1-secrets/secrets/create"
 REWRAP_URL = URL + "/v1-secrets/secrets/rewrap"
+
+
+def get_create_url(url=URL):
+    return url + "/v1-secrets/secrets/create"
+
+
+def get_delete_url(url=URL):
+    return url + "/v1-secrets/secrets/delete"
+
+
+def get_rewrap_url(url=URL):
+    return url + "/v1-secrets/secrets/rewrap"
+
 
 secret_data = {
         "type": "secret",
@@ -116,52 +128,33 @@ def get_expected_encrypted_value(p_key, value):
     return cipher.encrypt(value)
 
 
-def decrypt_aes(key, cipherText):
-    cipherText = ast.literal_eval(cipherText)
-    cText = base64.b64decode(cipherText["CipherText"])
-
-    # Based on Golang decrypt method
-    tag = cText[len(cText)-16:]
-    c_text = cText[:len(cText)-16]
-
-    print("TAG: {}".format(tag))
-    print("ctext: {}".format(c_text))
-
-    decryptor = Cipher(
-        algorithms.AES(key),
-        modes.GCM(binascii.b2a_hex(cipherText["Nonce"]), tag),
-        backend=default_backend()
-    ).decryptor()
-
-    return decryptor.update(c_text) + decryptor.finalize()
-
-
-def get_decrypted_value(p_key, val):
-    decoded_val = base64.b64decode(val)
-    val = json.loads(decoded_val)
-
-    key = RSA.importKey(p_key)
-    cipher = PKCS1_OAEP.new(key, hashAlgo=SHA256)
-
-    enc_aes_key = base64.b64decode(val["encryptedKey"]["encryptedText"])
-    aesKey = cipher.decrypt(enc_aes_key)
-
-    return decrypt_aes(aesKey, val["encryptedText"])
-
-
 def _post(url, json):
     secret = requests.post(url, json=json, timeout=10.0)
-    print(secret.status_code)
-    print(secret.json())
-    assert "tempKey" not in secret.json().keys()
-    return secret
+
+    try:
+        print(secret.status_code)
+        print(secret.json())
+        assert "tempKey" not in secret.json().keys()
+        return secret
+    except ValueError:
+        if secret.status_code == 200:
+            return secret
+
+    assert False
 
 
 def python_post_response(url, json):
     secret = _post(url, json)
     assert secret.status_code == requests.codes.ok
     assert secret.status_code != 400
-    return secret.json()
+    dict = {}
+
+    try:
+        dict = secret.json()
+    except ValueError:
+        dict = {}
+
+    return dict
 
 
 def verify_python_bad_post_response(url, json):
@@ -169,12 +162,6 @@ def verify_python_bad_post_response(url, json):
     resp = secret.json()
     assert secret.status_code == 400
     assert resp["type"] == "error"
-
-
-def verify_plain_text_from_enc(data, expected_value=secret_data["clearText"]):
-    plain_text = get_decrypted_value(insecure_private_key, data)
-
-    assert expected_value == base64.b64decode(plain_text)
 
 
 def md5_hex_digest(data):
@@ -211,21 +198,6 @@ def test_secrets_create_bulk_api_none_backend(bulk_secret):
         i += 1
 
 
-@pytest.skip("Need a way to decrypt AES256-GCM96")
-def test_secrets_rewrap_api_none_backend(single_b64_secret):
-    json_secret = python_post_response(CREATE_URL, single_b64_secret)
-
-    json_secret["rewrapKey"] = insecure_public_key
-    json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
-
-    assert "clearText" not in json_rewrapped_secret.keys()
-    assert "cipherText" not in json_rewrapped_secret.keys()
-
-    print(json_rewrapped_secret.keys())
-    verify_plain_text_from_enc(
-        json_rewrapped_secret["rewrapText"])
-
-
 def test_secrets_rewrap_api_none_backend_invalid_signatures(single_secret):
     json_secret = python_post_response(CREATE_URL, single_secret)
 
@@ -235,7 +207,7 @@ def test_secrets_rewrap_api_none_backend_invalid_signatures(single_secret):
     verify_python_bad_post_response(REWRAP_URL, json_secret)
 
 
-def test_secrets_api_vault_backend_no_collisions(single_secret):
+def test_secrets_api_vault_backend_avoids_collisions(single_secret):
     single_secret["backend"] = "vault"
     single_secret["keyName"] = "rancher"
     json_secret1 = python_post_response(CREATE_URL, single_secret)
@@ -243,74 +215,6 @@ def test_secrets_api_vault_backend_no_collisions(single_secret):
 
     assert json_secret1["cipherText"] != json_secret2["cipherText"]
     assert json_secret1["signature"] != json_secret2["signature"]
-
-
-@pytest.skip("Need a way to decrypt AES256-GCM96")
-def test_secrets_rewrap_api_vault_backend(single_secret, single_b64_secret):
-    '''
-    This flow verifies that Vault backend can handle b64 and plaintext
-    inputs.
-    '''
-    single_secret["backend"] = "vault"
-    single_secret["keyName"] = "rancher"
-    json_secret = python_post_response(CREATE_URL, single_secret)
-
-    single_b64_secret["backend"] = "vault"
-    single_b64_secret["keyName"] = "rancher"
-    json_b64_secret = python_post_response(CREATE_URL, single_b64_secret)
-
-    json_secret["rewrapKey"] = insecure_public_key
-    json_b64_secret["rewrapKey"] = insecure_public_key
-    json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
-    json_b64_rewrapped_secret = python_post_response(
-        REWRAP_URL, json_b64_secret)
-
-    assert "clearText" not in json_rewrapped_secret.keys()
-    assert "cipherText" not in json_rewrapped_secret.keys()
-
-    assert "cipherText" not in json_b64_rewrapped_secret.keys()
-    assert "cipherText" not in json_b64_rewrapped_secret.keys()
-
-    verify_plain_text_from_enc(
-            json_rewrapped_secret["rewrapText"], single_secret["clearText"])
-
-    verify_plain_text_from_enc(
-            json_b64_rewrapped_secret["rewrapText"],
-            single_secret["clearText"])
-
-
-@pytest.skip("Need a way to decrypt AES256-GCM96")
-def test_secrets_rewrap_api_local_key_backend(single_secret):
-    single_secret["backend"] = "localkey"
-    single_secret["keyName"] = "test_key"
-    print(single_secret["clearText"])
-    json_secret = python_post_response(CREATE_URL, single_secret)
-
-    json_secret["rewrapKey"] = insecure_public_key
-    json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
-
-    assert "clearText" not in json_rewrapped_secret.keys()
-    assert "cipherText" not in json_rewrapped_secret.keys()
-
-    verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
-
-
-@pytest.skip("Need a way to decrypt AES256-GCM96")
-def test_secrets_rewrap_api_b64_input_local_key_backend(single_b64_secret):
-    single_secret = single_b64_secret
-
-    single_secret["backend"] = "localkey"
-    single_secret["keyName"] = "test_key"
-    print(single_secret["clearText"])
-    json_secret = python_post_response(CREATE_URL, single_secret)
-
-    json_secret["rewrapKey"] = insecure_public_key
-    json_rewrapped_secret = python_post_response(REWRAP_URL, json_secret)
-
-    assert "clearText" not in json_rewrapped_secret.keys()
-    assert "cipherText" not in json_rewrapped_secret.keys()
-
-    verify_plain_text_from_enc(json_rewrapped_secret["rewrapText"])
 
 
 def test_secrets_local_key_backend_same_text_avoids_collisions(single_secret):
@@ -324,36 +228,26 @@ def test_secrets_local_key_backend_same_text_avoids_collisions(single_secret):
     assert json_secret1["signature"] != json_secret2["signature"]
 
 
-@pytest.skip("Need a way to decrypt AES256-GCM96")
-def test_secrets_rewrap_api_local_key_bad_signature_backend(single_secret):
-    single_secret["backend"] = "localkey"
-    single_secret["keyName"] = "test_key"
-    print(single_secret["clearText"])
+def test_vault_backend_with_storage_dir(single_secret):
+    single_secret["backend"] = "vault"
+
+    # Test that one has paths and the other doesn't
+    json_secret_alt = python_post_response(
+        get_create_url(ALT_URL), single_secret)
     json_secret = python_post_response(CREATE_URL, single_secret)
 
-    json_secret["rewrapKey"] = insecure_public_key
-    json_secret["signature"] = "itdontlookgood"
-    verify_python_bad_post_response(REWRAP_URL, json_secret)
+    client = hvac.Client(url=VAULT_STORAGE_URL, token="testing")
+    secret_cipher_text = client.read(json_secret_alt["cipherText"])
 
+    # Asserts the storage path
+    assert "v1-secrets" in json_secret_alt["cipherText"]
+    assert "v1-secrets" not in json_secret["cipherText"]
 
-@pytest.skip("Need a way to decrypt AES256-GCM96")
-def test_secrets_rewrap_bulk_api_none_backend(bulk_secret):
-    bulk_url = CREATE_URL+"?action=bulk"
-    json_secret = python_post_response(bulk_url, bulk_secret)
+    # Asserts it is stored in Vault
+    assert len(secret_cipher_text["data"]["cipherText"]) > 0
 
-    json_secret["rewrapKey"] = insecure_public_key
+    # Test the delete
+    python_post_response(get_delete_url(ALT_URL), json_secret_alt)
 
-    print(json_secret)
-
-    bulk_rewrap_url = REWRAP_URL + "?action=bulk"
-    json_rewrapped_secrets = python_post_response(bulk_rewrap_url, json_secret)
-
-    i = 0
-    for secret in json_rewrapped_secrets["data"]:
-        assert "clearText" not in secret.keys()
-        assert "cipherText" not in secret.keys()
-
-        verify_plain_text_from_enc(
-                secret["rewrapText"],
-                secrets_bulk_data["data"][i]["clearText"])
-        i += 1
+    secret_from_vault = client.read(json_secret_alt["cipherText"])
+    assert secret_from_vault is None
