@@ -50,6 +50,15 @@ func (s *Secret) Rewrap() error {
 	return s.clean(s.rewrap)
 }
 
+func (s *Secret) Delete() error {
+	backend, err := backends.New(s.Backend)
+	if err != nil {
+		return err
+	}
+
+	return backend.Delete(s.KeyName, s.CipherText)
+}
+
 func (s *Secret) encrypt() error {
 	if _, err := base64.StdEncoding.DecodeString(s.ClearText); err != nil {
 		s.ClearText = base64.StdEncoding.EncodeToString([]byte(s.ClearText))

@@ -9,17 +9,49 @@ echo "A374A26A71490437AA024E4FADD5B49" > /etc/ssl/private/alt_test_key
 
 export VAULT_ROOT_TOKEN_ID="testing"
 
-export VAULT_TOKEN=${VAULT_ROOT_TOKEN_ID}
-export VAULT_ADDR=http://127.0.0.1:8200
+#export VAULT_TOKEN=${VAULT_ROOT_TOKEN_ID}
+#export VAULT_ADDR=http://127.0.0.1:8200
 
 /usr/bin/vault server -dev -dev-root-token-id=${VAULT_ROOT_TOKEN_ID} &
-sleep 10
-/usr/bin/vault mount transit
-/usr/bin/vault mounts
-/usr/bin/vault write -f transit/keys/rancher
-/usr/bin/vault read transit/keys/rancher
+sleep 3
 
-./bin/secrets-api -d server --enc-key-path /etc/ssl/private &
+/usr/bin/vault server -dev -dev-root-token-id=${VAULT_ROOT_TOKEN_ID} -dev-listen-address 0.0.0.0:18200 &
+sleep 3
+
+wire_vault()
+{
+    export VAULT_ADDR="${1}"
+    export VAULT_TOKEN=${VAULT_ROOT_TOKEN_ID}
+
+    /usr/bin/vault mount transit
+    /usr/bin/vault mounts
+    /usr/bin/vault write -f transit/keys/rancher
+    /usr/bin/vault read transit/keys/rancher
+}
+
+get_token()
+{
+    export VAULT_ADDR="${1}"
+    export VAULT_TOKEN=${VAULT_ROOT_TOKEN_ID}
+
+    if [ "${2}" = "true" ]; then
+        export OPTS=-metadata="storage_dir=/secret/rancher"
+    fi
+
+    echo $(/usr/bin/vault token-create ${OPTS} -format=json| jq -r '.auth.client_token')
+}
+
+# Normal ephemeral storage
+wire_vault "http://127.0.0.1:8200"
+TOKEN1=$(get_token "http://127.0.0.1:8200")
+echo ./bin/secrets-api -d server --enc-key-path /etc/ssl/private --vault-url http://127.0.0.1:8200 --vault-token ${TOKEN1}
+./bin/secrets-api -d server --enc-key-path /etc/ssl/private --vault-url http://127.0.0.1:8200 --vault-token ${TOKEN1} &
+
+# Makes use of vault storage
+wire_vault "http://127.0.0.1:18200"
+TOKEN2=$(get_token "http://127.0.0.1:18200" "true")
+echo ./bin/secrets-api -d server --enc-key-path /etc/ssl/private --vault-url http://127.0.0.1:18200 --vault-token ${TOKEN2} --listen-address 127.0.0.1:18181
+./bin/secrets-api -d server --enc-key-path /etc/ssl/private --vault-url http://127.0.0.1:18200 --vault-token ${TOKEN2} --listen-address 127.0.0.1:18181 &
 
 cd integration
 python --version

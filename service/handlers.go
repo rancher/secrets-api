@@ -28,8 +28,10 @@ func ListSecrets(w http.ResponseWriter, r *http.Request) (int, error) {
 	secretCollection.Actions = map[string]string{
 		"create":             apiContext.UrlBuilder.Collection("secret") + "/create",
 		"rewrap":             apiContext.UrlBuilder.Collection("secret") + "/rewrap",
+		"purge":              apiContext.UrlBuilder.Collection("secret") + "/purge",
 		"rewrap?action=bulk": apiContext.UrlBuilder.Collection("secret") + "/rewrap?action=bulk",
 		"create?action=bulk": apiContext.UrlBuilder.Collection("secret") + "/create?action=bulk",
+		"purge?action=bulk":  apiContext.UrlBuilder.Collection("secret") + "/purge?action=bulk",
 	}
 
 	apiContext.Write(secretCollection)
@@ -130,6 +132,48 @@ func BulkRewrapSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 
 	apiContext.Write(&bulkSecret)
 	return http.StatusOK, nil
+}
+
+// DeleteSecret provides a hook to the backend to clear out data.
+func DeleteSecret(w http.ResponseWriter, r *http.Request) (int, error) {
+	sec := secrets.GetSecretResource()
+
+	jsonDecoder := json.NewDecoder(r.Body)
+
+	err := jsonDecoder.Decode(&sec)
+	if err != nil {
+		logrus.Errorf("Could not decode: %s because %s", r.Body, err)
+		return http.StatusBadRequest, err
+	}
+
+	err = sec.Delete()
+	if err != nil {
+		logrus.Error(err)
+		return http.StatusBadRequest, err
+	}
+
+	return http.StatusNoContent, nil
+}
+
+// BulkDeleteSecret provides a hook to the backend to clear out data.
+func BulkDeleteSecret(w http.ResponseWriter, r *http.Request) (int, error) {
+	bulkSecret := secrets.NewBulkSecret()
+
+	jsonDecoder := json.NewDecoder(r.Body)
+
+	err := jsonDecoder.Decode(&bulkSecret)
+	if err != nil {
+		logrus.Errorf("Could not decode: %s because %s", r.Body, err)
+		return http.StatusBadRequest, err
+	}
+
+	err = bulkSecret.Delete()
+	if err != nil {
+		logrus.Error(err)
+		return http.StatusBadRequest, err
+	}
+
+	return http.StatusNoContent, nil
 }
 
 //URLEncoded encodes the urls so that spaces are allowed in resource names

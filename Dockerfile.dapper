@@ -19,6 +19,7 @@ RUN apt-get update && \
         curl \
         vim \
         less \
+        jq \
         unzip \
         file && \
     rm -f /bin/sh && ln -s /bin/bash /bin/sh

@@ -49,3 +49,15 @@ func (s *BulkSecret) Encrypt() error {
 	}
 	return nil
 }
+
+func (s *BulkSecret) Delete() error {
+	for idx, secret := range s.Data {
+		err := secret.Delete()
+		if err != nil {
+			logrus.Error(err)
+			return err
+		}
+		s.Data[idx] = secret
+	}
+	return nil
+}
