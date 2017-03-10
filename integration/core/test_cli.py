@@ -198,6 +198,18 @@ def test_secrets_create_bulk_api_none_backend(bulk_secret):
         i += 1
 
 
+def test_secrets_bulk_rewrap_api_none_backend(bulk_secret):
+    bulk_url = CREATE_URL + "?action=bulk"
+    bulk_rewrap_url = REWRAP_URL + "?action=bulk"
+
+    json_secret = python_post_response(bulk_url, bulk_secret)
+    json_secret["rewrapKey"] = insecure_public_key
+
+    rewrap_secret = python_post_response(bulk_rewrap_url, json_secret)
+
+    assert len(rewrap_secret["data"]) == len(bulk_secret["data"])
+
+
 def test_secrets_rewrap_api_none_backend_invalid_signatures(single_secret):
     json_secret = python_post_response(CREATE_URL, single_secret)
 
