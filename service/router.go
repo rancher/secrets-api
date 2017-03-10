@@ -40,34 +40,41 @@ func NewRouter() *mux.Router {
 
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
-	schemas.AddType("bulkSecret", secrets.BulkSecret{})
+
+	schemas.AddType("bulkSecretInput", secrets.BulkSecretInput{})
+	schemas.AddType("bulkEncryptedSecret", secrets.BulkEncryptedSecret{})
+	schemas.AddType("bulkRewrappedSecret", secrets.BulkRewrappedSecret{})
+
+	schemas.AddType("secretInput", secrets.UnencryptedSecret{})
+	schemas.AddType("encryptedSecret", secrets.EncryptedSecret{})
+	schemas.AddType("rewrappedSecret", secrets.RewrappedSecret{})
 
 	secret := schemas.AddType("secret", secrets.Secret{})
 	secret.CollectionMethods = []string{"GET"}
 	secret.CollectionActions = map[string]client.Action{
 		"rewrap": {
-			Input:  "secret",
-			Output: "secret",
+			Input:  "encryptedSecret",
+			Output: "rewrappedSecret",
 		},
 		"rewrap?action=bulk": {
-			Input:  "bulkSecret",
-			Output: "bulkSecret",
+			Input:  "bulkSecretInput",
+			Output: "bulkEncryptedSecret",
 		},
 		"create": {
-			Input:  "secret",
-			Output: "secret",
+			Input:  "secretInput",
+			Output: "encryptedSecret",
 		},
 		"create?action=bulk": {
-			Input:  "bulkSecret",
-			Output: "bulkSecret",
+			Input:  "bulkSecretInput",
+			Output: "bulkEncryptedSecret",
 		},
 		"purge": {
-			Input:  "secret",
-			Output: "secret",
+			Input:  "encryptedSecret",
+			Output: "encryptedSecret",
 		},
 		"purge?action=bulk": {
-			Input:  "bulkSecret",
-			Output: "bulkSecret",
+			Input:  "bulkEncryptedSecret",
+			Output: "bulkEncryptedSecret",
 		},
 	}
 

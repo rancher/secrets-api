@@ -10,25 +10,49 @@ type SecretCollection struct {
 	Data []Secret `json:"data,omitempty"`
 }
 
-type BulkSecret struct {
+type BulkSecretInput struct {
 	client.Resource
-	Data      []Secret `json:"data,omitempty"`
-	RewrapKey string   `json:"rewrapKey,omitempty"`
+	Data []*UnencryptedSecret `json:"data,omitempty"`
+}
+
+type BulkEncryptedSecret struct {
+	client.Resource
+	Data      []*EncryptedSecret `json:"data,omitempty"`
+	RewrapKey string             `json:"rewrapKey,omitempty"`
+}
+
+type BulkRewrappedSecret struct {
+	client.Resource
+	Data []*RewrappedSecret `json:"data,omitempty"`
+}
+
+type UnencryptedSecret struct {
+	client.Resource
+	Backend   string `json:"backend"`
+	KeyName   string `json:"keyName"`
+	ClearText string `json:"clearText,omitempty"`
+}
+
+type EncryptedSecret struct {
+	client.Resource
+	Backend             string `json:"backend"`
+	KeyName             string `json:"keyName"`
+	CipherText          string `json:"cipherText,omitempty"`
+	HashAlgorithm       string `json:"hashAlgorithm"`
+	EncryptionAlgorithm string `json:"encryptionAglorigthm"`
+	Signature           string `json:"signature"`
+	RewrapKey           string `json:"rewrapKey,omitempty"`
+	tmpKey              aesutils.AESKey
+}
+
+type RewrappedSecret struct {
+	client.Resource
+	SecretName string `json:"name,omitempty"`
+	RewrapText string `json:"rewrapText,omitempty"`
 }
 
 type Secret struct {
 	client.Resource
-	SecretName          string `json:"name"`
-	Backend             string `json:"backend"`
-	KeyName             string `json:"keyName"`
-	CipherText          string `json:"cipherText,omitempty"`
-	ClearText           string `json:"clearText,omitempty"`
-	RewrapText          string `json:"rewrapText,omitempty"`
-	RewrapKey           string `json:"rewrapKey,omitempty"`
-	HashAlgorithm       string `json:"hashAlgorithm"`
-	EncryptionAlgorithm string `json:"encryptionAglorigthm"`
-	Signature           string `json:"signature"`
-	tmpKey              aesutils.AESKey
 }
 
 type EncryptedData struct {

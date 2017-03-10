@@ -64,20 +64,24 @@ FNH/hPpMSf5p6Gl4Ipl12s5U6FVYQlmuVlFgV8iUEKsSkMWdrvvx5X38RlgqQqvU
 
 func TestRewrapMessage(t *testing.T) {
 	encData := &EncryptedData{}
-	secret := GetSecretResource()
+	secret := GetUnencryptedSecretResource()
 	secret.Backend = "none"
 	secret.ClearText = "hello"
 
-	err := secret.Encrypt()
+	encSecret, err := NewEncryptedSecret(secret)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	secret.RewrapKey = publicKey()
+	encSecret.RewrapKey = publicKey()
 
-	secret.Rewrap()
-	aesExpectedKey, _ := secret.tmpKey.Key()
+	rewrappedSecret, err := NewRewrappedSecret(encSecret)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	aesExpectedKey, _ := encSecret.tmpKey.Key()
 
 	rsaDecryptor, err := rsautils.NewRSADecryptorKeyFromString(privateKey())
 	if err != nil {
@@ -85,7 +89,7 @@ func TestRewrapMessage(t *testing.T) {
 		return
 	}
 
-	encDataDecoded, err := base64.StdEncoding.DecodeString(secret.RewrapText)
+	encDataDecoded, err := base64.StdEncoding.DecodeString(rewrappedSecret.RewrapText)
 	if err != nil {
 		t.Error(err)
 		return

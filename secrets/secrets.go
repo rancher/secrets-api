@@ -13,44 +13,54 @@ import (
 	"github.com/rancher/secrets-api/pkg/rsautils"
 )
 
-func NewSecret(context *api.ApiContext) *Secret {
-	secret := &Secret{
+func GetEncryptedSecretResource() *EncryptedSecret {
+	return &EncryptedSecret{}
+}
+
+func GetUnencryptedSecretResource() *UnencryptedSecret {
+	return &UnencryptedSecret{}
+}
+
+func NewUnencryptedSecret(context *api.ApiContext) *UnencryptedSecret {
+	return &UnencryptedSecret{
 		Resource: client.Resource{
-			Type: "secret",
+			Type: "secretInput",
 		},
 	}
-	return secret
 }
 
-func GetSecretResource() *Secret {
-	return &Secret{}
+func NewEncryptedSecret(clearSecret *UnencryptedSecret) (*EncryptedSecret, error) {
+	secret := &EncryptedSecret{
+		Resource: client.Resource{
+			Type: "encryptedSecret",
+		},
+		Backend: clearSecret.Backend,
+		KeyName: clearSecret.KeyName,
+	}
+
+	return secret, secret.seal(clearSecret.ClearText)
 }
 
-func (s *Secret) clean(f func() error) error {
-	err := f()
-	s.ClearText = ""
-	return err
-}
-
-// Encrypt implements the interface and uses a wrapper
-// to ensure that clear text doesn't leave
-func (s *Secret) Encrypt() error {
-	return s.clean(s.encrypt)
-}
-
-// Rewrap implements the interface and uses a wrapper
-// to ensure that clear text doesn't leave
-func (s *Secret) Rewrap() error {
+func NewRewrappedSecret(encSecret *EncryptedSecret) (*RewrappedSecret, error) {
 	var err error
-	if s.tmpKey == nil {
-		if s.tmpKey, err = aesutils.NewRandomAESKey(32); err != nil {
-			return err
+
+	secret := &RewrappedSecret{
+		Resource: client.Resource{
+			Type: "rewrappedSecret",
+		},
+	}
+
+	if encSecret.tmpKey == nil {
+		if encSecret.tmpKey, err = aesutils.NewRandomAESKey(32); err != nil {
+			return secret, err
 		}
 	}
-	return s.clean(s.rewrap)
+
+	secret.RewrapText, err = encSecret.rewrap()
+	return secret, err
 }
 
-func (s *Secret) Delete() error {
+func (s *EncryptedSecret) Delete() error {
 	backend, err := backends.New(s.Backend)
 	if err != nil {
 		return err
@@ -59,9 +69,9 @@ func (s *Secret) Delete() error {
 	return backend.Delete(s.KeyName, s.CipherText)
 }
 
-func (s *Secret) encrypt() error {
-	if _, err := base64.StdEncoding.DecodeString(s.ClearText); err != nil {
-		s.ClearText = base64.StdEncoding.EncodeToString([]byte(s.ClearText))
+func (s *EncryptedSecret) seal(clearText string) error {
+	if _, err := base64.StdEncoding.DecodeString(clearText); err != nil {
+		clearText = base64.StdEncoding.EncodeToString([]byte(clearText))
 	}
 
 	backend, err := backends.New(s.Backend)
@@ -69,12 +79,12 @@ func (s *Secret) encrypt() error {
 		return err
 	}
 
-	s.CipherText, err = backend.GetEncryptedText(s.KeyName, s.ClearText)
+	s.CipherText, err = backend.GetEncryptedText(s.KeyName, clearText)
 	if err != nil {
 		return err
 	}
 
-	s.Signature, err = backend.Sign(s.KeyName, s.ClearText)
+	s.Signature, err = backend.Sign(s.KeyName, clearText)
 	if err != nil {
 		return err
 	}
@@ -82,11 +92,11 @@ func (s *Secret) encrypt() error {
 	return nil
 }
 
-func (s *Secret) rewrap() error {
+func (s *EncryptedSecret) rewrap() (string, error) {
 	var err error
 	encData, err := s.wrapPlainText()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	s.HashAlgorithm = encData.HashAlgorithm
@@ -95,19 +105,16 @@ func (s *Secret) rewrap() error {
 	// Marshal to bytes
 	marshalledEncData, err := json.Marshal(encData)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Marshal to string, things get weird in the wild.
-	s.RewrapText = base64.StdEncoding.EncodeToString(marshalledEncData)
+	data := base64.StdEncoding.EncodeToString(marshalledEncData)
 
-	s.CipherText = ""
-	s.RewrapKey = ""
-
-	return nil
+	return data, nil
 }
 
-func (s *Secret) wrapPlainText() (*EncryptedData, error) {
+func (s *EncryptedSecret) wrapPlainText() (*EncryptedData, error) {
 	backend, err := backends.New(s.Backend)
 	if err != nil {
 		return nil, err
@@ -125,7 +132,7 @@ func (s *Secret) wrapPlainText() (*EncryptedData, error) {
 	return nil, errors.New("Signatures did not match")
 }
 
-func (s *Secret) SetTmpKey(key aesutils.AESKey) {
+func (s *EncryptedSecret) SetTmpKey(key aesutils.AESKey) {
 	s.tmpKey = key
 }
 
