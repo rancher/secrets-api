@@ -43,7 +43,7 @@ func ListSecrets(w http.ResponseWriter, r *http.Request) (int, error) {
 func CreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
 
-	sec := secrets.NewSecret(apiContext)
+	sec := secrets.NewUnencryptedSecret(apiContext)
 
 	jsonDecoder := json.NewDecoder(r.Body)
 
@@ -53,14 +53,14 @@ func CreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, err
 	}
 
-	err = sec.Encrypt()
+	secret, err := secrets.NewEncryptedSecret(sec)
 	if err != nil {
 		logrus.Errorf("Could not encrypt secret")
 		logrus.Error(err)
 		return http.StatusBadRequest, err
 	}
 
-	apiContext.Write(&sec)
+	apiContext.Write(&secret)
 
 	return http.StatusOK, nil
 }
@@ -68,7 +68,7 @@ func CreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 // BulkCreateSecret handles creating a list of multiple secrets and generating response
 func BulkCreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
-	bulkSecret := secrets.NewBulkSecret()
+	bulkSecret := secrets.NewBulkSecretInput()
 
 	jsonDecoder := json.NewDecoder(r.Body)
 
@@ -77,13 +77,13 @@ func BulkCreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, err
 	}
 
-	err = bulkSecret.Encrypt()
+	bulkSecrets, err := secrets.NewBulkEncryptedSecret(bulkSecret)
 	if err != nil {
 		logrus.Error(err)
 		return http.StatusBadRequest, err
 	}
 
-	apiContext.Write(bulkSecret)
+	apiContext.Write(bulkSecrets)
 	return http.StatusOK, nil
 }
 
@@ -91,7 +91,7 @@ func BulkCreateSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 func RewrapSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
 
-	sec := secrets.GetSecretResource()
+	sec := secrets.GetEncryptedSecretResource()
 
 	jsonDecoder := json.NewDecoder(r.Body)
 
@@ -101,20 +101,20 @@ func RewrapSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, err
 	}
 
-	err = sec.Rewrap()
+	secret, err := secrets.NewRewrappedSecret(sec)
 	if err != nil {
 		logrus.Errorf("Could not rewrap secret")
 		return http.StatusBadRequest, err
 	}
 
-	apiContext.Write(&sec)
+	apiContext.Write(&secret)
 	return http.StatusOK, nil
 }
 
 // BulkRewrapSecret rewraps multiple secrets with a single given public key
 func BulkRewrapSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 	apiContext := api.GetApiContext(r)
-	bulkSecret := secrets.NewBulkSecret()
+	bulkSecret := secrets.GetBulkEncryptedSecretResource()
 
 	jsonDecoder := json.NewDecoder(r.Body)
 
@@ -124,19 +124,19 @@ func BulkRewrapSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 		return http.StatusBadRequest, err
 	}
 
-	err = bulkSecret.Rewrap()
+	bulkRewrapped, err := secrets.NewBulkRewrappedSecret(bulkSecret)
 	if err != nil {
 		logrus.Error(err)
 		return http.StatusBadRequest, err
 	}
 
-	apiContext.Write(&bulkSecret)
+	apiContext.Write(&bulkRewrapped)
 	return http.StatusOK, nil
 }
 
 // DeleteSecret provides a hook to the backend to clear out data.
 func DeleteSecret(w http.ResponseWriter, r *http.Request) (int, error) {
-	sec := secrets.GetSecretResource()
+	sec := secrets.GetEncryptedSecretResource()
 
 	jsonDecoder := json.NewDecoder(r.Body)
 
@@ -157,7 +157,7 @@ func DeleteSecret(w http.ResponseWriter, r *http.Request) (int, error) {
 
 // BulkDeleteSecret provides a hook to the backend to clear out data.
 func BulkDeleteSecret(w http.ResponseWriter, r *http.Request) (int, error) {
-	bulkSecret := secrets.NewBulkSecret()
+	bulkSecret := secrets.GetBulkEncryptedSecretResource()
 
 	jsonDecoder := json.NewDecoder(r.Body)
 

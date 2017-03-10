@@ -6,58 +6,82 @@ import (
 	"github.com/rancher/secrets-api/pkg/aesutils"
 )
 
-func NewBulkSecret() *BulkSecret {
+func NewBulkSecretInput() *BulkSecretInput {
 
-	return &BulkSecret{
+	return &BulkSecretInput{
 		Resource: client.Resource{
-			Type: "bulkSecret",
+			Type: "bulkSecretInput",
 		},
-		Data: []Secret{},
+		Data: []*UnencryptedSecret{},
 	}
 }
 
-func (s *BulkSecret) Rewrap() error {
-	tmpKey, err := aesutils.NewRandomAESKey(32)
-	if err != nil {
-		return err
-	}
-	for idx, secret := range s.Data {
-		secret.RewrapKey = s.RewrapKey
-		secret.SetTmpKey(tmpKey)
-
-		err := secret.Rewrap()
-		if err != nil {
-			logrus.Errorf("Could not decrypt secret")
-			return err
-		}
-		s.Data[idx] = secret
-	}
-
-	s.RewrapKey = ""
-
-	return nil
+func GetBulkEncryptedSecretResource() *BulkEncryptedSecret {
+	return &BulkEncryptedSecret{}
 }
 
-func (s *BulkSecret) Encrypt() error {
-	for idx, secret := range s.Data {
-		err := secret.Encrypt()
-		if err != nil {
-			logrus.Error(err)
-			return err
-		}
-		s.Data[idx] = secret
+func NewBulkEncryptedSecret(secretInput *BulkSecretInput) (*BulkEncryptedSecret, error) {
+	bsi := &BulkEncryptedSecret{
+		Resource: client.Resource{
+			Type: "bulkEncryptedSecret",
+		},
+		Data: []*EncryptedSecret{},
 	}
-	return nil
+
+	return bsi, bsi.seal(secretInput.Data)
 }
 
-func (s *BulkSecret) Delete() error {
-	for idx, secret := range s.Data {
+func NewBulkRewrappedSecret(secrets *BulkEncryptedSecret) (*BulkRewrappedSecret, error) {
+	brs := &BulkRewrappedSecret{
+		Resource: client.Resource{
+			Type: "bulkRewrappedSecret",
+		},
+	}
+
+	return brs, brs.rewrap(secrets)
+}
+
+func (bes *BulkEncryptedSecret) Delete() error {
+	for _, secret := range bes.Data {
 		err := secret.Delete()
 		if err != nil {
 			logrus.Error(err)
 			return err
 		}
-		s.Data[idx] = secret
+	}
+
+	return nil
+}
+
+func (s *BulkRewrappedSecret) rewrap(secrets *BulkEncryptedSecret) error {
+	tmpKey, err := aesutils.NewRandomAESKey(32)
+	if err != nil {
+		return err
+	}
+
+	for _, secret := range secrets.Data {
+		secret.SetTmpKey(tmpKey)
+		secret.RewrapKey = secrets.RewrapKey
+
+		rewrapped, err := NewRewrappedSecret(secret)
+		if err != nil {
+			logrus.Errorf("Could not decrypt secret")
+			return err
+		}
+		s.Data = append(s.Data, rewrapped)
+	}
+
+	return nil
+}
+
+func (bes *BulkEncryptedSecret) seal(clearData []*UnencryptedSecret) error {
+	for _, clear := range clearData {
+		secret, err := NewEncryptedSecret(clear)
+		if err != nil {
+			logrus.Error(err)
+			return err
+		}
+		bes.Data = append(bes.Data, secret)
 	}
 	return nil
 }
