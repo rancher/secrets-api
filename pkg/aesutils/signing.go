@@ -4,6 +4,8 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+
+	"github.com/Sirupsen/logrus"
 )
 
 // Sign implements the interface
@@ -36,6 +38,8 @@ func sign(key, msg []byte) ([]byte, error) {
 
 // VerifySignature implements the interface.
 func VerifySignature(aesKey AESKey, signature, message string) (bool, error) {
+	nonce := make([]byte, 12, 12)
+
 	key, err := aesKey.Key()
 	if err != nil {
 		return false, err
@@ -46,10 +50,18 @@ func VerifySignature(aesKey AESKey, signature, message string) (bool, error) {
 		return false, err
 	}
 
-	signedMsg, err := sign(key, append(byteSignature[:12], []byte(":"+message)...))
+	copy(nonce, byteSignature[:12])
+
+	logrus.Debugf("Sent Signature in Bytes: %s", byteSignature)
+	logrus.Debugf("Nonce: %s", nonce)
+	logrus.Debugf("Sent Signed Cipher Text: %s", byteSignature[13:])
+
+	signedMsg, err := sign(key, append(nonce, []byte(":"+message)...))
 	if err != nil {
 		return false, err
 	}
+
+	logrus.Debugf("Generated sig from deciphered text: %s", signedMsg)
 
 	return hmac.Equal(byteSignature[13:], signedMsg), nil
 }
