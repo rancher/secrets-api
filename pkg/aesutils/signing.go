@@ -4,8 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
-	"strings"
 )
 
 // Sign implements the interface
@@ -48,15 +46,10 @@ func VerifySignature(aesKey AESKey, signature, message string) (bool, error) {
 		return false, err
 	}
 
-	splitSig := strings.SplitN(string(byteSignature), ":", 2)
-	if len(splitSig) != 2 {
-		return false, errors.New("Invalid signature input")
-	}
-
-	signedMsg, err := sign(key, append([]byte(splitSig[0]), []byte(":"+message)...))
+	signedMsg, err := sign(key, append(byteSignature[:12], []byte(":"+message)...))
 	if err != nil {
 		return false, err
 	}
 
-	return hmac.Equal([]byte(splitSig[1]), signedMsg), nil
+	return hmac.Equal(byteSignature[13:], signedMsg), nil
 }
