@@ -25,7 +25,8 @@ func main() {
 	app.Before = beforeApp
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
-			Name: "debug,d",
+			Name:   "debug,d",
+			EnvVar: "DEFAULT_CATTLE_SECRETS_API_DEBUG",
 		},
 	}
 
