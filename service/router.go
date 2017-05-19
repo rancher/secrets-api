@@ -112,12 +112,12 @@ func NewRouter() *mux.Router {
 	router.Methods("POST").Path("/v1-secrets/secrets/rewrap").Handler(f(schemas, RewrapSecret))
 
 	router.Methods("POST").
-		Path("/v1-secrets/secrets/delete").
+		Path("/v1-secrets/secrets/purge").
 		Queries("action", "bulk").
 		Handler(f(schemas, BulkDeleteSecret))
 
 	router.Methods("POST").
-		Path("/v1-secrets/secrets/delete").
+		Path("/v1-secrets/secrets/purge").
 		Handler(f(schemas, DeleteSecret))
 
 	// These just loop back to themselves in the schemas

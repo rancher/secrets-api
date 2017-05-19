@@ -22,7 +22,7 @@ def get_create_url(url=URL):
 
 
 def get_delete_url(url=URL):
-    return url + "/v1-secrets/secrets/delete"
+    return url + "/v1-secrets/secrets/purge"
 
 
 def get_rewrap_url(url=URL):
