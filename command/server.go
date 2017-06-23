@@ -1,6 +1,12 @@
 package command
 
 import (
+	"log"
+	"os"
+	"strconv"
+	"syscall"
+	"time"
+
 	"github.com/rancher/secrets-api/backends"
 	"github.com/rancher/secrets-api/service"
 	"github.com/urfave/cli"
@@ -43,6 +49,26 @@ func startServer(c *cli.Context) error {
 	backendConfig.EncryptionKeyPath = c.String("enc-key-path")
 	backendConfig.VaultURL = c.String("vault-url")
 	backendConfig.VaultToken = c.String("vault-token")
+
+	cattleParentID := os.Getenv("CATTLE_PARENT_PID")
+	if cattleParentID != "" {
+		if pid, err := strconv.Atoi(cattleParentID); err == nil {
+			go func() {
+				for {
+					process, err := os.FindProcess(pid)
+					if err != nil {
+						log.Fatalf("Failed to find process: %s\n", err)
+					} else {
+						err := process.Signal(syscall.Signal(0))
+						if err != nil {
+							log.Fatal("Parent process went away. Shutting down.")
+						}
+					}
+					time.Sleep(time.Millisecond * 250)
+				}
+			}()
+		}
+	}
 
 	backends.SetBackendConfigs(backendConfig)
 
