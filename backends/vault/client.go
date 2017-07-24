@@ -151,7 +151,7 @@ func (v *Client) VerifySignature(keyName, signature, message string) (bool, erro
 }
 
 func (v *Client) Delete(keyName, cipherText string) error {
-	client, err := v.getVaultClient()
+	client, err := v.GetVaultClient()
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func (v *Client) Delete(keyName, cipherText string) error {
 }
 
 func (v *Client) writeToVault(path string, data map[string]interface{}) (*api.Secret, error) {
-	vaultClient, err := v.getVaultClient()
+	vaultClient, err := v.GetVaultClient()
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,8 @@ func (v *Client) getStorageDir() (string, error) {
 	return "", nil
 }
 
-func (v *Client) getVaultClient() (*api.Client, error) {
+// GetVaultClient returns a vault api client
+func (v *Client) GetVaultClient() (*api.Client, error) {
 	config := api.DefaultConfig()
 	config.Address = v.url
 
@@ -248,7 +249,7 @@ func (v *Client) storeSecretInVault(cipherText string) (string, error) {
 }
 
 func (v *Client) retrieveSecretFromVault(path string) (string, error) {
-	cli, err := v.getVaultClient()
+	cli, err := v.GetVaultClient()
 	if err != nil {
 		return "", err
 	}
