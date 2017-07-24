@@ -30,14 +30,14 @@ RENEW:
 		select {
 		case err := <-renewer.DoneCh():
 			if err != nil {
-				logrus.Info("failed to renew: ", err)
+				logrus.Warn("failed to renew: ", err)
 			}
-			logrus.Info("renewer returned (maybe the lease expired)")
+			logrus.Warn("renewer returned (maybe the lease expired)")
 			break RENEW
 		case renewal := <-renewer.RenewCh():
-			logrus.Info("vault token successfully renewed")
+			logrus.Debug("vault token successfully renewed")
 			if renewal.Secret.Warnings != nil {
-				logrus.Info(renewal.Secret.Warnings)
+				logrus.Warn(renewal.Secret.Warnings)
 			}
 		}
 	}
