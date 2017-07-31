@@ -2,15 +2,14 @@ package vault
 
 import (
 	"github.com/Sirupsen/logrus"
-
 	"github.com/hashicorp/vault/api"
 )
 
 // RenewLease renews the auth token for Vault
-func RenewLease(c *api.Client) error {
+func (c *Client) RenewLease() error {
 	secret := &api.Secret{
 		Auth: &api.SecretAuth{
-			ClientToken: c.Token(),
+			ClientToken: c.token,
 			Renewable:   true,
 		},
 	}
@@ -19,7 +18,7 @@ func RenewLease(c *api.Client) error {
 		Secret: secret,
 	}
 
-	renewer, err := c.NewRenewer(input)
+	renewer, err := c.vaultClient.NewRenewer(input)
 	if err != nil {
 		return err
 	}

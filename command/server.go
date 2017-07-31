@@ -1,9 +1,7 @@
 package command
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/rancher/secrets-api/backends"
-	"github.com/rancher/secrets-api/backends/vault"
 	"github.com/rancher/secrets-api/service"
 	"github.com/urfave/cli"
 )
@@ -45,15 +43,6 @@ func startServer(c *cli.Context) error {
 	backendConfig.EncryptionKeyPath = c.String("enc-key-path")
 	backendConfig.VaultURL = c.String("vault-url")
 	backendConfig.VaultToken = c.String("vault-token")
-	if len(backendConfig.VaultURL) == 0 {
-		c, err := vault.NewClient(backendConfig.VaultURL, backendConfig.VaultToken)
-		if err != nil {
-			logrus.Error(err)
-		}
-		vaultClient, err := c.GetVaultClient()
-		logrus.Errorf("error creating vault api client: %s", err)
-		vault.RenewLease(vaultClient)
-	}
 	backends.SetBackendConfigs(backendConfig)
 
 	return service.StartServer(c.String("listen-address"))

@@ -12,26 +12,37 @@ import (
 	"github.com/hashicorp/vault/api"
 )
 
+var client *Client
+
 // Client is the struct that implements the backend interface
 type Client struct {
-	url        string
-	token      string
-	storageDir string
+	url         string
+	token       string
+	storageDir  string
+	vaultClient *api.Client
 }
 
 // NewClient returns a Client type that is ready to interact
 // with vault
 func NewClient(url, token string) (*Client, error) {
 	var err error
+	if client != nil {
+		return client, err
+	}
 
-	client := &Client{
+	c := &Client{
 		url:   url,
 		token: token,
 	}
 
-	client.storageDir, err = client.getStorageDir()
+	c.storageDir, err = c.getStorageDir()
 	if err != nil {
 		return client, err
+	}
+
+	err = c.initVaultClient()
+	if err != nil {
+		return nil, err
 	}
 
 	return client, nil
@@ -151,13 +162,9 @@ func (v *Client) VerifySignature(keyName, signature, message string) (bool, erro
 }
 
 func (v *Client) Delete(keyName, cipherText string) error {
-	client, err := v.GetVaultClient()
-	if err != nil {
-		return err
-	}
 
 	if v.storageDir != "" {
-		_, err := client.Logical().Delete(cipherText)
+		_, err := v.vaultClient.Logical().Delete(cipherText)
 		if err != nil {
 			return err
 		}
@@ -167,12 +174,7 @@ func (v *Client) Delete(keyName, cipherText string) error {
 }
 
 func (v *Client) writeToVault(path string, data map[string]interface{}) (*api.Secret, error) {
-	vaultClient, err := v.GetVaultClient()
-	if err != nil {
-		return nil, err
-	}
-
-	return vaultClient.Logical().Write(path, data)
+	return v.vaultClient.Logical().Write(path, data)
 }
 
 func (v *Client) getStorageDir() (string, error) {
@@ -195,17 +197,39 @@ func (v *Client) getStorageDir() (string, error) {
 }
 
 // GetVaultClient returns a vault api client
-func (v *Client) GetVaultClient() (*api.Client, error) {
+func (v *Client) initVaultClient() error {
 	config := api.DefaultConfig()
 	config.Address = v.url
 
 	client, err := api.NewClient(config)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	client.SetToken(v.token)
+	secret, err := client.Auth().Token().LookupSelf()
+	if err != nil {
+		return err
+	}
+	if !isRenewable(secret) {
+		return fmt.Errorf("vault token is non renewable")
+	}
+	v.RenewLease()
+	v.vaultClient = client
 
-	return client, nil
+	return nil
+}
+
+func isRenewable(secret *api.Secret) bool {
+	if secret != nil {
+		data := secret.Data
+		if value, ok := data["renewable"]; ok {
+			if value == true {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func testVaultTransitKeyExists(vaultCli *api.Client, keyName string) (bool, error) {
@@ -249,12 +273,8 @@ func (v *Client) storeSecretInVault(cipherText string) (string, error) {
 }
 
 func (v *Client) retrieveSecretFromVault(path string) (string, error) {
-	cli, err := v.GetVaultClient()
-	if err != nil {
-		return "", err
-	}
 
-	secret, err := cli.Logical().Read(path)
+	secret, err := v.vaultClient.Logical().Read(path)
 	if err != nil {
 		return "", err
 	}
