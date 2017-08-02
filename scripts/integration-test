@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e 
+set -e
 
 cd $(dirname $0)/..
 
@@ -27,6 +27,50 @@ wire_vault()
     /usr/bin/vault mounts
     /usr/bin/vault write -f transit/keys/rancher
     /usr/bin/vault read transit/keys/rancher
+    cat > transit-admin.hcl <<EOF
+path "auth/token/lookup" {
+      capabilities = ["create", "update"]
+}
+
+path "auth/token/lookup-self" {
+      capabilities = ["create", "update"]
+}
+
+path "transit/random/*" {
+  capabilities = ["create", "update"]
+}
+
+path "transit/hmac/*" {
+  capabilities = ["create", "update"]
+}
+
+path "transit/encrypt/rancher" {
+  capabilities = ["create", "update"]
+}
+
+path "transit/encrypt" {
+  capabilities = ["create", "update", "read", "sudo", "delete"]
+}
+
+path "transit/decrypt/rancher" {
+  capabilities = ["create", "update"]
+}
+
+path "transit/verify/rancher/*" {
+  capabilities = ["create", "update", "read"]
+}
+
+path "transit/keys/*" {
+  capabilities = ["deny"]
+}
+
+path "sys/*" {
+  capabilities = ["deny"]
+}
+EOF
+    /usr/bin/vault policy-write transit-admin transit-admin.hcl
+    /usr/bin/vault policies transit-admin
+    /usr/bin/vault write auth/token/roles/testrole allowed_policies="transit-admin" period=600 orphan=true
 }
 
 get_token()
@@ -38,7 +82,7 @@ get_token()
         export OPTS=-metadata="storage_dir=/secret/rancher"
     fi
 
-    echo $(/usr/bin/vault token-create ${OPTS} -format=json| jq -r '.auth.client_token')
+    echo $(/usr/bin/vault write -f -field=token auth/token/create/testrole)
 }
 
 # Normal ephemeral storage

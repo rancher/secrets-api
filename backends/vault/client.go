@@ -35,15 +35,26 @@ func NewClient(url, token string) (*Client, error) {
 		token: token,
 	}
 
+	err = c.initVaultClient()
+	if err != nil {
+		return nil, err
+	}
+
 	c.storageDir, err = c.getStorageDir()
 	if err != nil {
 		return client, err
 	}
 
-	err = c.initVaultClient()
+	secret, err := c.vaultClient.Auth().Token().LookupSelf()
 	if err != nil {
 		return nil, err
 	}
+	if !isRenewable(secret) {
+		return nil, fmt.Errorf("vault token is non renewable")
+	}
+	// c.RenewLease()
+
+	client = c
 
 	return client, nil
 }
@@ -206,14 +217,7 @@ func (v *Client) initVaultClient() error {
 		return err
 	}
 	client.SetToken(v.token)
-	secret, err := client.Auth().Token().LookupSelf()
-	if err != nil {
-		return err
-	}
-	if !isRenewable(secret) {
-		return fmt.Errorf("vault token is non renewable")
-	}
-	v.RenewLease()
+
 	v.vaultClient = client
 
 	return nil
