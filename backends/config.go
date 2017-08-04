@@ -18,10 +18,11 @@ func NewConfig() *Configs {
 func SetBackendConfigs(config *Configs) error {
 	runtimeConfigs = config
 	if len(runtimeConfigs.VaultToken) != 0 {
-		_, err := vault.NewClient(runtimeConfigs.VaultURL, runtimeConfigs.VaultToken)
+		v, err := vault.NewClient(runtimeConfigs.VaultURL, runtimeConfigs.VaultToken)
 		if err != nil {
 			logrus.Error(err)
 		}
+		go v.RenewLease()
 	}
 	return nil
 }
